@@ -173,7 +173,140 @@ document.getElementById('finalizeInv').addEventListener('click', ()=>{
   state.sales = state.sales || [];
   state.sales.push(sale);
   saveState(state); renderItems(); modalInvoice.hide(); updateSummary(); renderHistory();
+  // Open printable invoice similar to provided paper template
+  printSale(sale);
 });
+
+function printSale(sale){
+  const win = window.open('', '_blank', 'width=800,height=900');
+  if(!win) return;
+  const linesHtml = sale.lines.map((l,idx)=>{
+    const subtotal = l.qty * l.price;
+    return `<tr><td style="padding:6px 8px;border:1px solid #000">${idx+1}</td><td style="padding:6px 8px;border:1px solid #000">${l.name}</td><td style="padding:6px 8px;border:1px solid #000;text-align:center">${l.qty}</td><td style="padding:6px 8px;border:1px solid #000;text-align:right">${fmtRp(l.price)}</td><td style="padding:6px 8px;border:1px solid #000;text-align:right">${fmtRp(subtotal)}</td></tr>`;
+  }).join('');
+
+  const html = `
+  <html>
+  <head>
+    <title>Invoice - ${sale.id}</title>
+    <style>
+      body{font-family: Arial, Helvetica, sans-serif; color:#000}
+      .header{display:flex;justify-content:space-between;align-items:flex-start}
+      .company{font-weight:800;font-size:18px}
+      table{border-collapse:collapse;width:100%;margin-top:12px}
+      .meta{margin-top:8px}
+      .right{text-align:right}
+      .small{font-size:12px}
+      .download-btn{display:inline-block;margin-right:8px;padding:6px 10px;border:1px solid #333;background:#eee;color:#000;text-decoration:none}
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div>
+        <div class="company">REZEKI MAKMUR</div>
+        <div class="small">Plastics and Other Resto Supplies</div>
+      </div>
+      <div class="right">
+        <div>D/O No: ${sale.id}</div>
+        <div>Date: ${new Date(sale.date).toLocaleDateString()}</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div>To: <strong>${sale.customer}</strong></div>
+      <div>Type: ${sale.type}</div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th style="border:1px solid #000;padding:6px 8px">No</th>
+          <th style="border:1px solid #000;padding:6px 8px">Nama Barang</th>
+          <th style="border:1px solid #000;padding:6px 8px;text-align:center">Qty</th>
+          <th style="border:1px solid #000;padding:6px 8px;text-align:right">Harga</th>
+          <th style="border:1px solid #000;padding:6px 8px;text-align:right">Subtotal</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${linesHtml}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4" style="padding:6px 8px;border:1px solid #000;text-align:right"><strong>Total</strong></td>
+          <td style="padding:6px 8px;border:1px solid #000;text-align:right"><strong>${fmtRp(sale.total)}</strong></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div style="margin-top:20px">Terima kasih atas pembelian Anda.</div>
+    <div style="margin-top:40px;display:flex;justify-content:space-between">
+      <div>Delivered by: __________________</div>
+      <div>Received by: __________________</div>
+    </div>
+    <div style="margin-top:12px">
+      <a id="downloadPdf" class="download-btn" href="#">Download PDF</a>
+      <a id="printNow" class="download-btn" href="#">Print</a>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
+    <script>
+      document.getElementById('printNow').addEventListener('click', (e)=>{ e.preventDefault(); window.print(); });
+      document.getElementById('downloadPdf').addEventListener('click', (e)=>{
+        e.preventDefault();
+        const opt = { margin:0.4, filename: 'invoice_${sale.id}.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+        html2pdf().set(opt).from(document.body).save();
+      });
+    </script>
+  </body>
+  </html>
+  `;
+  win.document.open(); win.document.write(html); win.document.close();
+  // Give browser a moment to render then call print
+  setTimeout(()=>{ /* don't auto-print; user can choose */ }, 500);
+}
+
+// CSV export/import helpers
+function exportCSV(filename, rows){
+  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
+}
+
+function exportInventoryCSV(){
+  const header = ['id','name','category','price','cost','quantity','date'];
+  const rows = [header].concat(state.items.map(i=>[i.id,i.name,i.category,i.price||0,i.cost||0,i.quantity||0,i.date||'']));
+  exportCSV('inventory.csv', rows);
+}
+
+function exportSalesCSV(){
+  const header = ['sale_id','date','customer','type','total','lines_json'];
+  const rows = [header].concat((state.sales||[]).map(s=>[s.id,s.date,s.customer,s.type,s.total, JSON.stringify(s.lines)]));
+  exportCSV('sales.csv', rows);
+}
+
+function importInventoryCSV(file){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    const text = reader.result;
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    if(lines.length<2) return alert('CSV kosong atau tidak valid');
+    const header = lines.shift().split(',').map(h=>h.replace(/^"|"$/g,''));
+    const idx = (k)=> header.indexOf(k);
+    lines.forEach(ln=>{
+      const cols = ln.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/).map(c=>c.replace(/^"|"$/g,'').replace(/""/g,'"'));
+      const item = { id: cols[idx('id')]||uid(), name: cols[idx('name')]||'', category: cols[idx('category')]||'others', price: parseInt(cols[idx('price')])||0, cost: parseInt(cols[idx('cost')])||0, quantity: parseInt(cols[idx('quantity')])||0, date: cols[idx('date')]||new Date().toISOString() };
+      state.items.push(item);
+    });
+    saveState(state); renderItems(); updateSummary(); alert('Import selesai');
+  };
+  reader.readAsText(file);
+}
+
+// Wire export/import buttons
+document.getElementById('exportInv').addEventListener('click', exportInventoryCSV);
+document.getElementById('exportSales').addEventListener('click', exportSalesCSV);
+document.getElementById('importInv').addEventListener('click', ()=> document.getElementById('importFile').click());
+document.getElementById('importFile').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) importInventoryCSV(f); e.target.value=''; });
 
 // Sales history
 const historyList = document.getElementById('historyList');

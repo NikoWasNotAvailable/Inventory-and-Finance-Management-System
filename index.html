@@ -22,12 +22,16 @@
 
     <!-- nav kategori & search tetap terlihat di layar besar -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="mb-0">Daftar Barang</h5>
-      <div>
-        <button id="openInvoice" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-receipt"></i> Invoice</button>
-        <button id="btnAdd" class="btn btn-dark btn-sm"><i class="bi bi-plus-lg me-1"></i>Tambah barang</button>
-      </div>
+    <h5 class="mb-0">Daftar Barang</h5>
+    <div>
+      <button id="openInvoice" class="btn btn-outline-primary btn-sm me-2"><i class="bi bi-receipt"></i> Invoice</button>
+      <button id="btnAdd" class="btn btn-dark btn-sm me-2"><i class="bi bi-plus-lg me-1"></i>Tambah barang</button>
+      <button id="exportInv" class="btn btn-sm btn-outline-secondary me-1">Export Inv CSV</button>
+      <button id="importInv" class="btn btn-sm btn-outline-secondary me-1">Import Inv</button>
+      <button id="exportSales" class="btn btn-sm btn-outline-secondary">Export Sales CSV</button>
+      <input type="file" id="importFile" accept=".csv" style="display:none">
     </div>
+  </div>
 
     <div class="bg-white rounded-3 shadow-sm p-3">
 
@@ -126,6 +130,8 @@
     </div>
   </div>
 
+  <!-- html2pdf for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
   <script src="app.js"></script>
 
