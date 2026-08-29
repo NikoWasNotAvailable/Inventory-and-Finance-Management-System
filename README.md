@@ -24,3 +24,24 @@ Next steps:
 - Tambah export/import CSV
 - Filter dan pagination untuk history
 - Integrasi backend (optional)
+
+Server (optional):
+1. Install dependencies and run server (requires Node.js):
+
+```bash
+cd server
+npm install
+npm start
+```
+
+2. Default admin credentials: `admin` / `password` (change via env `ADMIN_USER` `ADMIN_PASS`).
+3. API endpoints:
+ - `POST /api/auth/login` {username,password} -> {token}
+ - `GET /api/items`
+ - `POST /api/items` (auth)
+ - `PUT /api/items/:id` (auth)
+ - `DELETE /api/items/:id` (auth)
+ - `GET /api/sales`
+ - `POST /api/sales` (auth)
+
+Note: Frontend currently uses `localStorage` for offline use. You can integrate the frontend to call these endpoints if you run the server.

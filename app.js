@@ -192,11 +192,14 @@ function printSale(sale){
     <style>
       body{font-family: Arial, Helvetica, sans-serif; color:#000}
       .header{display:flex;justify-content:space-between;align-items:flex-start}
-      .company{font-weight:800;font-size:18px}
+      .company{font-weight:900;font-size:20px}
+      .addr{font-size:12px;margin-top:2px}
       table{border-collapse:collapse;width:100%;margin-top:12px}
       .meta{margin-top:8px}
       .right{text-align:right}
       .small{font-size:12px}
+      .do-box{border:1px solid #000;padding:6px;display:inline-block}
+      .total-big{font-size:18px;font-weight:800}
       .download-btn{display:inline-block;margin-right:8px;padding:6px 10px;border:1px solid #333;background:#eee;color:#000;text-decoration:none}
     </style>
   </head>
@@ -215,6 +218,15 @@ function printSale(sale){
     <div class="meta">
       <div>To: <strong>${sale.customer}</strong></div>
       <div>Type: ${sale.type}</div>
+    </div>
+
+    <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:flex-start">
+      <div>
+        <div class="do-box">D/O No: ${sale.id}</div>
+      </div>
+      <div class="right">
+        <div>Date: ${new Date(sale.date).toLocaleDateString()}</div>
+      </div>
     </div>
 
     <table>
@@ -263,6 +275,22 @@ function printSale(sale){
   // Give browser a moment to render then call print
   setTimeout(()=>{ /* don't auto-print; user can choose */ }, 500);
 }
+
+// Undo last sale: restore quantities and remove last sale
+function undoLastSale(){
+  if(!state.sales || state.sales.length===0){ alert('Tidak ada sale untuk di-undo'); return; }
+  const last = state.sales.pop();
+  last.lines.forEach(l=>{
+    const it = state.items.find(x=>x.id===l.id);
+    if(it) it.quantity = (it.quantity||0) + (l.qty||0);
+  });
+  saveState(state); renderItems(); renderHistory(); updateSummary();
+  alert('Last sale undone and stock restored.');
+}
+
+document.getElementById('undoLast').addEventListener('click', ()=>{
+  if(confirm('Undo last sale? Ini akan mengembalikan stok dan menghapus sales terakhir.')) undoLastSale();
+});
 
 // CSV export/import helpers
 function exportCSV(filename, rows){
