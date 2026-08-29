@@ -183,99 +183,90 @@ function printSale(sale){
   const linesHtml = sale.lines.map((l,idx)=>{
     const subtotal = l.qty * l.price;
     return `<tr><td style="padding:6px 8px;border:1px solid #000">${idx+1}</td><td style="padding:6px 8px;border:1px solid #000">${l.name}</td><td style="padding:6px 8px;border:1px solid #000;text-align:center">${l.qty}</td><td style="padding:6px 8px;border:1px solid #000;text-align:right">${fmtRp(l.price)}</td><td style="padding:6px 8px;border:1px solid #000;text-align:right">${fmtRp(subtotal)}</td></tr>`;
-  }).join('');
+    // build fixed-row invoice table to match paper form (12 rows)
+    const rowsCount = 12;
+    const rows = [];
+    for(let i=0;i<rowsCount;i++){
+      const l = sale.lines[i];
+      if(l){
+        const subtotal = l.qty * l.price;
+        rows.push(`<tr><td style="padding:6px 8px;border-bottom:1px dashed #666;width:40px">${i+1}</td><td style="padding:6px 8px;border-bottom:1px dashed #666">${l.name}</td><td style="padding:6px 8px;border-bottom:1px dashed #666;text-align:center;width:60px">${l.qty}</td><td style="padding:6px 8px;border-bottom:1px dashed #666;text-align:right;width:120px">${fmtRp(l.price)}</td><td style="padding:6px 8px;border-bottom:1px dashed #666;text-align:right;width:140px">${fmtRp(subtotal)}</td></tr>`);
+      } else {
+        rows.push(`<tr><td style="padding:10px 8px;border-bottom:1px dashed #666;height:28px"></td><td style="padding:10px 8px;border-bottom:1px dashed #666"></td><td style="padding:10px 8px;border-bottom:1px dashed #666"></td><td style="padding:10px 8px;border-bottom:1px dashed #666"></td><td style="padding:10px 8px;border-bottom:1px dashed #666"></td></tr>`);
+      }
+    }
 
-  const html = `
-  <html>
-  <head>
-    <title>Invoice - ${sale.id}</title>
-    <style>
-      body{font-family: Arial, Helvetica, sans-serif; color:#000}
-      .header{display:flex;justify-content:space-between;align-items:flex-start}
-      .company{font-weight:900;font-size:20px}
-      .addr{font-size:12px;margin-top:2px}
-      table{border-collapse:collapse;width:100%;margin-top:12px}
-      .meta{margin-top:8px}
-      .right{text-align:right}
-      .small{font-size:12px}
-      .do-box{border:1px solid #000;padding:6px;display:inline-block}
-      .total-big{font-size:18px;font-weight:800}
-      .download-btn{display:inline-block;margin-right:8px;padding:6px 10px;border:1px solid #333;background:#eee;color:#000;text-decoration:none}
-    </style>
-  </head>
-  <body>
-    <div class="header">
-      <div>
-        <div class="company">REZEKI MAKMUR</div>
-        <div class="small">Plastics and Other Resto Supplies</div>
+    const linesHtml = rows.join('');
+
+    const html = `
+    <html>
+    <head>
+      <title>Invoice - ${sale.id}</title>
+      <style>
+        body{font-family: Arial, Helvetica, sans-serif; color:#000; margin:18px}
+        .top{display:flex;justify-content:space-between}
+        .company-right{text-align:right}
+        .company-right .name{font-weight:900;font-size:20px}
+        .company-right .addr{font-size:12px}
+        .do-box{border:2px solid #000;padding:6px;display:inline-block;margin-top:6px}
+        table{width:100%;border-collapse:collapse;margin-top:10px}
+        th{border-bottom:2px solid #000;text-align:left;padding:6px}
+        td{padding:6px}
+        .total-block{margin-top:12px;display:flex;justify-content:space-between;align-items:center}
+        .total-label{font-size:14px}
+        .total-amount{font-size:20px;font-weight:900}
+        .small{font-size:12px;color:#333}
+      </style>
+    </head>
+    <body>
+      <div class="top">
+        <div>
+          <div class="small">To:</div>
+          <div><strong>${sale.customer}</strong></div>
+          <div class="small">Type: ${sale.type}</div>
+        </div>
+        <div class="company-right">
+          <div class="name">REZEKI MAKMUR</div>
+          <div class="addr">Plastics and Other Resto Supplies</div>
+          <div class="do-box">D/O No: ${sale.id}</div>
+        </div>
       </div>
-      <div class="right">
-        <div>D/O No: ${sale.id}</div>
-        <div>Date: ${new Date(sale.date).toLocaleDateString()}</div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px">No</th>
+            <th>Nama Barang</th>
+            <th style="width:60px;text-align:center">Qty</th>
+            <th style="width:120px;text-align:right">Harga</th>
+            <th style="width:140px;text-align:right">Jumlah</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linesHtml}
+        </tbody>
+      </table>
+
+      <div class="total-block">
+        <div>
+          <div class="small">Notes:</div>
+          <div style="height:48px;border:1px dashed #666;width:320px"></div>
+        </div>
+        <div style="text-align:right">
+          <div class="total-label">Total</div>
+          <div class="total-amount">${fmtRp(sale.total)}</div>
+        </div>
       </div>
-    </div>
 
-    <div class="meta">
-      <div>To: <strong>${sale.customer}</strong></div>
-      <div>Type: ${sale.type}</div>
-    </div>
-
-    <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:flex-start">
-      <div>
-        <div class="do-box">D/O No: ${sale.id}</div>
+      <div style="margin-top:26px;display:flex;justify-content:space-between">
+        <div>Hormat Kami,</div>
+        <div>Terima,</div>
       </div>
-      <div class="right">
-        <div>Date: ${new Date(sale.date).toLocaleDateString()}</div>
-      </div>
-    </div>
-
-    <table>
-      <thead>
-        <tr>
-          <th style="border:1px solid #000;padding:6px 8px">No</th>
-          <th style="border:1px solid #000;padding:6px 8px">Nama Barang</th>
-          <th style="border:1px solid #000;padding:6px 8px;text-align:center">Qty</th>
-          <th style="border:1px solid #000;padding:6px 8px;text-align:right">Harga</th>
-          <th style="border:1px solid #000;padding:6px 8px;text-align:right">Subtotal</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${linesHtml}
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" style="padding:6px 8px;border:1px solid #000;text-align:right"><strong>Total</strong></td>
-          <td style="padding:6px 8px;border:1px solid #000;text-align:right"><strong>${fmtRp(sale.total)}</strong></td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <div style="margin-top:20px">Terima kasih atas pembelian Anda.</div>
-    <div style="margin-top:40px;display:flex;justify-content:space-between">
-      <div>Delivered by: __________________</div>
-      <div>Received by: __________________</div>
-    </div>
-    <div style="margin-top:12px">
-      <a id="downloadPdf" class="download-btn" href="#">Download PDF</a>
-      <a id="printNow" class="download-btn" href="#">Print</a>
-    </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.3/html2pdf.bundle.min.js"></script>
-    <script>
-      document.getElementById('printNow').addEventListener('click', (e)=>{ e.preventDefault(); window.print(); });
-      document.getElementById('downloadPdf').addEventListener('click', (e)=>{
-        e.preventDefault();
-        const opt = { margin:0.4, filename: 'invoice_${sale.id}.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
-        html2pdf().set(opt).from(document.body).save();
-      });
-    </script>
-  </body>
-  </html>
-  `;
-  win.document.open(); win.document.write(html); win.document.close();
-  // Give browser a moment to render then call print
-  setTimeout(()=>{ /* don't auto-print; user can choose */ }, 500);
-}
-
+    </body>
+    </html>
+    `;
+    win.document.open(); win.document.write(html); win.document.close();
+    setTimeout(()=>{}, 300);
 // Undo last sale: restore quantities and remove last sale
 function undoLastSale(){
   if(!state.sales || state.sales.length===0){ alert('Tidak ada sale untuk di-undo'); return; }
