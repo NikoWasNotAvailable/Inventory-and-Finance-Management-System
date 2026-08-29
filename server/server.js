@@ -8,7 +8,8 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const db = new Database('./data.db');
+const path = require('path');
+const db = new Database(path.join(__dirname, 'data.db'));
 // Initialize tables
 db.prepare(`CREATE TABLE IF NOT EXISTS items (
   id TEXT PRIMARY KEY, name TEXT, category TEXT, price INTEGER, cost INTEGER, quantity INTEGER, date TEXT
@@ -76,4 +77,8 @@ app.post('/api/sales', authMiddleware, (req,res)=>{
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, ()=>console.log('Server running on', port));
+// Serve frontend static files from repo root so users can open the app via server
+const staticRoot = path.join(__dirname, '..');
+app.use('/', express.static(staticRoot));
+
+app.listen(port, ()=>console.log('Server running on', port, 'serving', staticRoot));
