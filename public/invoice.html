@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makmur | Invoice</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark" aria-label="Makmur"><div class="brand-icon">M</div><strong>MAKMUR</strong></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item" href="/"><span class="nav-icon">▣</span> Product</a>
+        <a class="nav-item active" href="/invoice.html"><span class="nav-icon">✎</span> Invoice</a>
+        <a class="nav-item" href="#"><span class="nav-icon">▤</span> Payment</a>
+        <a class="nav-item" href="#"><span class="nav-icon">≡</span> Transaction</a>
+        <a class="nav-item" href="#"><span class="nav-icon">$</span> Income</a>
+      </nav>
+      <div class="sidebar-footer">LOCAL INVENTORY<br><span>v1.0</span></div>
+    </aside>
+    <main class="main-content">
+      <header class="page-header invoice-page-header"><div><p class="eyebrow">SALES DOCUMENT</p><h1>Invoice Page</h1></div><div class="header-status"><span class="status-dot"></span> Draft invoice</div></header>
+      <form id="invoiceForm" class="invoice-sheet">
+        <section class="invoice-top"><div class="company-heading"><div class="company-logo">M</div><div><h2>REZEKI MAKMUR</h2><p>Plastics and Other Resto Supplies<br>Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat</p></div></div><div class="invoice-meta"><label><span>TGL.</span><input id="invoiceDate" type="date" required></label><label class="customer-label"><span>Kepada YTH.</span><input id="invoiceCustomer" type="text" placeholder="Customer name" required></label><textarea id="invoiceAddress" placeholder="Customer address"></textarea></div></section>
+        <div class="invoice-number"><span>D/O NO.</span><input id="invoiceDoNumber" type="text" placeholder="Optional"></div>
+        <div class="invoice-items-heading"><span>QNT</span><span>Name</span><span>Unit</span><span>Price</span><span>Total Price</span><span></span></div>
+        <div id="invoiceItems" class="invoice-items"></div><button id="addInvoiceLine" class="add-line-button" type="button">+ Add line</button>
+        <section class="invoice-total"><input id="invoiceNotes" type="text" placeholder="PO Customer"><div class="total-box" style="display:flex;align-items:center;justify-content:space-between;border:1px solid #777;min-height:40px;padding:0 12px;"><span>Total Rp.</span><strong id="invoiceTotal" style="border:0;padding:0;">Rp 0</strong></div></section>
+        <section class="invoice-signatures"><label>Yang menerima.<input id="invoiceReceiver" type="text" placeholder="Name"></label><label>Hormat kami.<span class="signature-line"></span></label></section>
+        <p id="invoiceError" class="form-error" role="alert"></p><div class="invoice-actions"><button id="resetInvoice" class="secondary-button" type="button">Clear</button><button class="primary-button" type="submit">Create</button></div>
+      </form>
+    </main>
+  </div>
+  <script src="/app.js?v=4" defer></script>
+</body>
+</html>

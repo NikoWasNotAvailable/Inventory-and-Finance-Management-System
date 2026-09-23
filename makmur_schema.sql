@@ -4,7 +4,7 @@
 --
 --  THE BIG PICTURE
 --
---   BUY  (Product page)  -> row in `purchases`  = a STOCK LOT + a HUTANG
+--   BUY  (Product page)  -> row ins `purchases`  = a STOCK LOT + a HUTANG
 --        Payment page    -> hutang: unpaid -> Pay -> paid (History)
 --
 --   SELL (Invoice page)  -> rows in `invoice_items`

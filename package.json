@@ -1,0 +1,16 @@
+{
+  "name": "inventaris-rezeki-makmur",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local inventory and receivables backend for Rezeki Makmur",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "better-sqlite3": "^11.8.1",
+    "fastify": "^5.2.1"
+  }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makmur | Product</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark" aria-label="Makmur"><div class="brand-icon">M</div><strong>MAKMUR</strong></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item active" href="/"><span class="nav-icon">▣</span> Product</a>
+        <a class="nav-item" href="/invoice.html"><span class="nav-icon">✎</span> Invoice</a>
+        <a class="nav-item" href="#"><span class="nav-icon">▤</span> Payment</a>
+        <a class="nav-item" href="#"><span class="nav-icon">≡</span> Transaction</a>
+        <a class="nav-item" href="#"><span class="nav-icon">$</span> Income</a>
+      </nav>
+      <div class="sidebar-footer">LOCAL INVENTORY<br><span>v1.0</span></div>
+    </aside>
+    <main class="main-content">
+      <header class="page-header"><div><p class="eyebrow">INVENTORY CONTROL</p><h1>Product Page</h1></div><div class="header-status"><span class="status-dot"></span> Local database</div></header>
+      <section class="toolbar" aria-label="Product filters">
+        <label class="search-box"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Search product or supplier..."></label>
+        <label class="filter-field"><span>Date</span><input id="dateFilter" type="date"></label>
+        <label class="filter-field select-field"><span>Store</span><select id="storeFilter"><option value="">All stores</option></select></label>
+        <button id="addItemButton" class="primary-button" type="button">Add Item <span>+</span></button>
+      </section>
+      <section class="summary-strip"><div><span>Visible lots</span><strong id="lotCount">0</strong></div><div><span>Units on hand</span><strong id="unitsOnHand">0</strong></div><div><span>Unpaid balance</span><strong id="unpaidBalance">Rp 0</strong></div></section>
+      <section class="table-card"><div class="table-scroll"><table><thead><tr><th>From</th><th>Date</th><th>Name</th><th>QNT</th><th>Price</th><th>Total Price</th><th>Status</th><th aria-label="Actions"></th></tr></thead><tbody id="purchaseRows"><tr><td class="empty-state" colspan="8">Loading products...</td></tr></tbody></table></div></section>
+    </main>
+  </div>
+  <dialog id="addItemDialog"><form id="addItemForm" method="dialog"><div class="dialog-heading"><div><p id="dialogEyebrow" class="eyebrow">NEW STOCK LOT</p><h2 id="dialogTitle">Add Item</h2></div><button id="closeDialog" class="icon-button" type="button" aria-label="Close">×</button></div><div class="form-grid"><label>Store<input id="itemStore" type="text" placeholder="TOKO 1" required></label><label>Product name<input id="itemProduct" type="text" placeholder="Plastik 1" required></label><label>Purchase date<input id="itemDate" type="date" required></label><label>Unit<input id="itemUnit" type="text" value="PCK" placeholder="PCK" required></label><label>Quantity<input id="itemQuantity" type="number" min="1" step="1" required></label><label>Unit price<input id="itemPrice" type="number" min="0" step="1" required></label><label class="full-width">Note<input id="itemNote" type="text" maxlength="200" placeholder="Optional note"></label></div><p id="formError" class="form-error" role="alert"></p><div class="dialog-actions"><button id="cancelDialog" class="secondary-button" type="button">Cancel</button><button id="saveItemButton" class="primary-button" type="submit">Save item</button></div></form></dialog>
+  <script src="/app.js?v=4" defer></script>
+</body>
+</html>
