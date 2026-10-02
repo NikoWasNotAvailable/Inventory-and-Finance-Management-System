@@ -257,7 +257,7 @@ async function loadTransactions() {
   const invoices = await api(`/api/invoices?status=${history ? 'paid' : 'unpaid'}`);
   $('#transactionTitle').textContent = history ? 'History' : 'Transaction Page';
   document.querySelectorAll('.transaction-tab').forEach((tab) => tab.classList.toggle('active', history === tab.href.includes('history=1')));
-  $('#transactionRows').innerHTML = invoices.length ? invoices.map((invoice) => `<tr><td>${escapeHtml(invoice.store_name)}</td><td>${formatDate(invoice.invoice_date)}</td><td>${escapeHtml(invoice.do_number)}</td><td>${escapeHtml(invoice.po_number || '-')}</td><td>${rupiah(invoice.total_amount)}</td><td><span class="transaction-status ${history ? 'paid' : 'unpaid'}">${history ? 'PAID' : invoice.status}</span></td><td><a class="transaction-action" title="Open detail" href="/transaction.html?id=${invoice.id}">◉</a></td></tr>`).join('') : '<tr><td class="empty-state" colspan="7">No transactions found.</td></tr>';
+  $('#transactionRows').innerHTML = invoices.length ? invoices.map((invoice) => `<tr><td>${escapeHtml(invoice.store_name)}</td><td>${formatDate(invoice.invoice_date)}</td><td>${escapeHtml(invoice.do_number)}</td><td>${escapeHtml(invoice.po_number || '-')}</td><td>${rupiah(invoice.total_amount)}</td><td><span class="transaction-status ${history ? 'paid' : 'unpaid'}">${history ? 'PAID' : invoice.status}</span></td><td><div class="transaction-actions"><button class="transaction-action download-pdf" type="button" data-id="${invoice.id}" title="Download PDF" aria-label="Download PDF">⤓</button><a class="transaction-action" title="Open detail" href="/transaction.html?id=${invoice.id}">◉</a></div></td></tr>`).join('') : '<tr><td class="empty-state" colspan="7">No transactions found.</td></tr>';
   $('#transactionSearch')?.addEventListener('input', (event) => { const query = event.target.value.toLowerCase().trim(); document.querySelectorAll('#transactionRows tr').forEach((row) => { row.hidden = query && !row.textContent.toLowerCase().includes(query); }); });
 }
 
@@ -269,9 +269,16 @@ async function renderTransactionDetail(invoiceId) {
   const removeInvoice = async (message, destination) => { if (!window.confirm(message)) return; try { await api(`/api/invoices/${invoice.id}`, { method: 'DELETE' }); window.location.href = destination; } catch (error) { $('#detailError').textContent = error.message; } };
   $('#wrongInputButton').addEventListener('click', () => removeInvoice('This invoice is wrong input. Delete it and return stock?', '/invoice.html'));
   $('#deleteInvoiceButton').addEventListener('click', () => removeInvoice('Delete this invoice permanently?', '/transaction.html'));
+  $('#downloadTransactionPdf')?.addEventListener('click', () => downloadInvoicePdf(invoice.id).catch((error) => window.alert(error.message)));
 }
 
 loadTransactions().catch((error) => { if ($('#transactionRows')) $('#transactionRows').innerHTML = `<tr><td class="empty-state" colspan="7">${escapeHtml(error.message)}</td></tr>`; if ($('#transactionDetail')) $('#transactionDetail').innerHTML = `<p class="detail-error">${escapeHtml(error.message)}</p>`; });
+
+document.addEventListener('click', (event) => {
+  const downloadButton = event.target.closest('.download-pdf');
+  if (!downloadButton) return;
+  downloadInvoicePdf(Number(downloadButton.dataset.id)).catch((error) => window.alert(error.message));
+});
 
 async function loadPayments() {
   if (!$('#paymentRows')) return;
@@ -288,3 +295,166 @@ async function loadPayments() {
 }
 
 loadPayments().catch((error) => { if ($('#paymentRows')) $('#paymentRows').innerHTML = `<tr><td class="payment-empty" colspan="9">${escapeHtml(error.message)}</td></tr>`; });
+
+const incomeState = { board: null, expenses: [], categories: [] };
+const incomeMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+const incomeColors = { piutang: '#2f9b6a', collected: '#f5c542', hutang: '#b34f45', hutang_paid: '#e0a58f', others: '#6f7c93' };
+const compactMoney = (value) => new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 1 }).format(value || 0);
+const monthTitle = (period) => `${incomeMonths[Number(period.slice(5, 7)) - 1]} ${period.slice(0, 4)}`;
+
+function renderBarChart(container, points, { signed = false, labelEvery = 1, empty = 'No data yet.' } = {}) {
+  if (!container) return;
+  if (!points.length) { container.innerHTML = `<p class="chart-empty">${escapeHtml(empty)}</p>`; return; }
+  const width = 320;
+  const height = 190;
+  const pad = { top: 20, right: 6, bottom: 20, left: 6 };
+  const innerWidth = width - pad.left - pad.right;
+  const innerHeight = height - pad.top - pad.bottom;
+  const totals = points.map((point) => (signed ? point.value : point.segments.reduce((sum, segment) => sum + segment.value, 0)));
+  const max = Math.max(0, ...totals);
+  const min = Math.min(0, ...totals);
+  const range = max - min || 1;
+  const top = max === min ? 1 : max;
+  const scale = (value) => pad.top + (top - value) / range * innerHeight;
+  const slot = innerWidth / points.length;
+  const barWidth = Math.max(3, Math.min(26, slot * 0.58));
+  const guides = [...new Set(signed ? [max, 0, min] : [max, max / 2, 0])];
+  const grid = guides.map((value) => `<line class="${value === 0 ? 'chart-axis' : 'chart-grid'}" x1="${pad.left}" y1="${scale(value).toFixed(1)}" x2="${width - pad.right}" y2="${scale(value).toFixed(1)}"></line>`
+    + `<text class="chart-label" x="${pad.left}" y="${(scale(value) - 3).toFixed(1)}">${compactMoney(value)}</text>`).join('');
+  const bars = points.map((point, index) => {
+    const x = pad.left + slot * index + (slot - barWidth) / 2;
+    let cursor = 0;
+    const segments = point.segments.map((segment) => {
+      if (segment.value === 0 || (!signed && segment.value < 0)) return '';
+      const from = scale(signed ? 0 : cursor);
+      const to = scale(signed ? segment.value : cursor + segment.value);
+      if (!signed) cursor += segment.value;
+      return `<rect x="${x.toFixed(1)}" y="${Math.min(from, to).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(1, Math.abs(to - from)).toFixed(1)}" rx="2" fill="${segment.color}"></rect>`;
+    }).join('');
+    const label = index % labelEvery === 0 || index === points.length - 1
+      ? `<text class="chart-label" x="${(x + barWidth / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle">${escapeHtml(point.label)}</text>` : '';
+    const value = point.value ? `<text class="chart-value" x="${(x + barWidth / 2).toFixed(1)}" y="${(scale(point.value) + (point.value < 0 ? 10 : -5)).toFixed(1)}" text-anchor="middle">${compactMoney(point.value)}</text>` : '';
+    return `<g><title>${escapeHtml(point.title || point.label)}: ${rupiah(point.value)}</title>${segments}${value}${label}</g>`;
+  }).join('');
+  container.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(empty)}">${grid}${bars}</svg>`;
+}
+
+const emptyRow = () => ({ piutang: 0, collected: 0, income: 0, hutang: 0, hutang_paid: 0, others: 0, outcome: 0, profit: 0 });
+const sumRows = (rows) => rows.reduce((total, row) => ({
+  piutang: total.piutang + row.piutang, collected: total.collected + row.collected,
+  hutang: total.hutang + row.hutang, hutang_paid: total.hutang_paid + row.hutang_paid, others: total.others + row.others,
+}), emptyRow());
+const rowWithTotals = (row) => ({ ...row, income: row.piutang + row.collected, outcome: row.hutang + row.hutang_paid + row.others, profit: row.piutang + row.collected - row.hutang - row.hutang_paid - row.others });
+const profitPoints = (items) => items.map((item) => ({
+  label: item.label, title: item.period, value: item.row.profit,
+  segments: [{ value: item.row.profit, color: item.row.profit < 0 ? '#b34f45' : '#2f9b6a' }],
+}));
+
+function renderIncomePage() {
+  if (!$('#incomeChart') || !incomeState.board) return;
+  const { year, month, monthly, daily } = incomeState.board;
+  const byPeriod = (rows, period) => rowWithTotals(rows.find((row) => row.period === period) || emptyRow());
+  const yearRows = incomeMonths.map((name, index) => {
+    const period = `${year}-${String(index + 1).padStart(2, '0')}`;
+    return { period, label: name, row: byPeriod(monthly, period) };
+  });
+  const daysInMonth = new Date(Number(year), Number(month), 0).getDate();
+  const dayRows = Array.from({ length: daysInMonth }, (_, index) => {
+    const period = `${year}-${month}-${String(index + 1).padStart(2, '0')}`;
+    return { period, label: String(index + 1), row: byPeriod(daily, period) };
+  });
+  const monthTotal = sumRows(dayRows.map((day) => day.row));
+  monthTotal.income = monthTotal.piutang + monthTotal.collected;
+  monthTotal.outcome = monthTotal.hutang + monthTotal.hutang_paid + monthTotal.others;
+  monthTotal.profit = monthTotal.income - monthTotal.outcome;
+
+  $('#incomeKpi').textContent = rupiah(monthTotal.income);
+  $('#outcomeKpi').textContent = rupiah(monthTotal.outcome);
+  const profitKpi = $('#netKpi');
+  profitKpi.textContent = rupiah(monthTotal.profit);
+  profitKpi.className = monthTotal.profit < 0 ? 'negative' : 'positive';
+  $('#monthProfitCaption').textContent = `${monthTitle(`${year}-${month}`)} - ${rupiah(monthTotal.profit)}`;
+  $('#yearProfitCaption').textContent = `${year} - ${rupiah(yearRows.reduce((sum, item) => sum + item.row.profit, 0))}`;
+
+  renderBarChart($('#monthProfitChart'), profitPoints(dayRows), { signed: true, labelEvery: 5, empty: 'No profit recorded in this month yet.' });
+  renderBarChart($('#yearProfitChart'), profitPoints(yearRows), { signed: true, empty: 'No profit recorded in this year yet.' });
+  renderBarChart($('#incomeChart'), yearRows.map((item) => ({
+    label: item.label, title: item.period, value: item.row.income,
+    segments: [{ value: item.row.piutang, color: incomeColors.piutang }, { value: item.row.collected, color: incomeColors.collected }],
+  })), { empty: 'No income recorded in this year yet.' });
+  renderBarChart($('#outcomeChart'), yearRows.map((item) => ({
+    label: item.label, title: item.period, value: item.row.outcome,
+    segments: [{ value: item.row.hutang, color: incomeColors.hutang }, { value: item.row.hutang_paid, color: incomeColors.hutang_paid }, { value: item.row.others, color: incomeColors.others }],
+  })), { empty: 'No outcome recorded in this year yet.' });
+  renderBarChart($('#profitChart'), profitPoints(yearRows), { signed: true, empty: 'No profit recorded in this year yet.' });
+  renderOthers(year, month);
+}
+
+function renderOthers(year, month) {
+  const prefix = `${year}-${month}`;
+  const rows = incomeState.expenses.filter((expense) => String(expense.expense_date).startsWith(prefix));
+  $('#othersList').innerHTML = rows.length ? rows.map((expense) => `
+    <li><time>${formatDate(expense.expense_date)}</time><span>${escapeHtml(expense.description)}</span>
+      <strong>${rupiah(expense.amount)}</strong>
+      <button class="others-remove" type="button" data-id="${expense.id}" title="Delete cost" aria-label="Delete cost">&times;</button></li>`).join('')
+    : '<li class="others-empty">No Others cost in this month.</li>';
+}
+
+async function loadIncomePage() {
+  if (!$('#incomeChart')) return;
+  const now = new Date();
+  incomeState.board = await api(`/api/reports/profit-board?year=${now.getFullYear()}&month=${String(now.getMonth() + 1).padStart(2, '0')}`);
+  [incomeState.expenses, incomeState.categories] = await Promise.all([api('/api/expenses'), api('/api/expense-categories')]);
+  const years = [...new Set([String(now.getFullYear()), ...incomeState.board.monthly.map((row) => row.period.slice(0, 4))])].sort().reverse();
+  $('#incomeYear').innerHTML = years.map((year) => `<option value="${year}">${year}</option>`).join('');
+  $('#incomeYear').value = incomeState.board.year;
+  $('#incomeMonth').innerHTML = incomeMonths.map((name, index) => `<option value="${String(index + 1).padStart(2, '0')}">${name}</option>`).join('');
+  $('#incomeMonth').value = incomeState.board.month;
+  $('#othersDate').value = today();
+  $('#othersCategory').innerHTML = incomeState.categories.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('');
+  renderIncomePage();
+}
+
+const reloadIncomePage = async () => {
+  incomeState.board = await api(`/api/reports/profit-board?year=$('#incomeYear').value}&month=$('#incomeMonth').value}`);
+  incomeState.expenses = await api('/api/expenses');
+  renderIncomePage();
+};
+
+$('#incomeYear')?.addEventListener('change', () => { reloadIncomePage().catch((error) => window.alert(error.message)); });
+$('#incomeMonth')?.addEventListener('change', () => { reloadIncomePage().catch((error) => window.alert(error.message)); });
+$('#addOthersButton')?.addEventListener('click', () => {
+  $('#othersForm').reset();
+  $('#othersError').textContent = '';
+  $('#othersDate').value = `${$('#incomeYear').value}-${$('#incomeMonth').value}-01`;
+  $('#othersCategory').innerHTML = incomeState.categories.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('');
+  $('#othersDialog').showModal();
+});
+$('#closeOthersDialog')?.addEventListener('click', () => $('#othersDialog').close());
+$('#cancelOthersDialog')?.addEventListener('click', () => $('#othersDialog').close());
+$('#othersForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  $('#othersError').textContent = '';
+  try {
+    await api('/api/expenses', {
+      method: 'POST',
+      body: JSON.stringify({
+        expenseDate: $('#othersDate').value, categoryId: Number($('#othersCategory').value),
+        description: $('#othersDescription').value.trim(), amount: parseMoneyInput($('#othersAmount').value),
+        note: $('#othersNote').value.trim() || null,
+      }),
+    });
+    $('#othersDialog').close();
+    await reloadIncomePage();
+  } catch (error) { $('#othersError').textContent = error.message; }
+});
+$('#othersList')?.addEventListener('click', async (event) => {
+  const button = event.target.closest('.others-remove');
+  if (!button || !window.confirm('Delete this operational cost?')) return;
+  try {
+    await api(`/api/expenses/${button.dataset.id}`, { method: 'DELETE' });
+    await reloadIncomePage();
+  } catch (error) { window.alert(error.message); }
+});
+
+loadIncomePage().catch((error) => { if ($('#incomeChart')) $('#incomeChart').innerHTML = `<p class="chart-empty">${escapeHtml(error.message)}</p>`; });

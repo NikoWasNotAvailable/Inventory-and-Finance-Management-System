@@ -1,2 +1,67 @@
 .transaction-page { max-width: 1180px; }.transaction-tabs { display:flex; gap:8px; margin-bottom:22px; border-bottom:1px solid #d9dbd8; }.transaction-tab { color:#747873; text-decoration:none; padding:10px 22px; border-bottom:2px solid transparent; }.transaction-tab.active { color:#202224; border-color:#202224; font-weight:700; }.transaction-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:22px; }.transaction-toolbar .search-box { max-width:370px; }.filter-chip { min-width:88px; height:40px; border:0; border-radius:5px; background:#262727; color:#fff; }.clock-button { width:40px; height:40px; border:1px solid #d5d7d3; border-radius:50%; background:#fff; color:#222; font-size:23px; }.transaction-table-card { background:#fff; }.transaction-table-card table { min-width:820px; }.transaction-table-card th,.transaction-table-card td { padding:15px 18px; }.transaction-status { display:inline-flex; min-width:78px; justify-content:center; border-radius:12px; padding:5px 12px; font-size:10px; font-weight:700; text-transform:uppercase; }.transaction-status.unpaid { color:#996900; background:#fff1c9; }.transaction-status.paid { color:#fff; background:#159b31; }.transaction-actions { display:flex; justify-content:flex-end; gap:8px; }.transaction-action { border:0; background:transparent; color:#2c302c; font-size:20px; padding:3px 6px; }.transaction-action:hover { color:#167445; }.back-link { display:inline-block; color:#555b55; text-decoration:none; margin-bottom:14px; }.transaction-detail-sheet { background:#fff; border:1px solid #dfe1de; padding:28px; min-height:560px; }.detail-head { display:flex; justify-content:space-between; gap:30px; border-bottom:1px solid #333; padding-bottom:22px; }.detail-brand h2 { font-family:Georgia,serif; font-size:25px; margin:0 0 4px; }.detail-brand p { font-family:Georgia,serif; font-size:11px; line-height:1.35; margin:0; }.detail-meta { min-width:270px; border:1px solid #555; }.detail-meta div { padding:8px 12px; border-bottom:1px solid #aaa; font-size:12px; }.detail-meta div:last-child { border:0; }.detail-meta strong { display:inline-block; width:80px; }.detail-items { width:100%; border-collapse:collapse; margin-top:18px; }.detail-items th,.detail-items td { border-bottom:1px solid #d6d8d5; padding:10px 8px; text-align:left; }.detail-total { display:flex; justify-content:flex-end; align-items:center; gap:20px; margin:22px 0; }.detail-total strong { border:1px solid #777; padding:11px 24px; min-width:180px; text-align:right; }.paid-button { background:#149934; color:#fff; border:0; border-radius:5px; min-width:125px; min-height:40px; font-weight:700; }.paid-button:hover { background:#087a27; }.detail-footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top:70px; }.detail-signature { min-width:160px; border-bottom:1px solid #555; padding-bottom:7px; }.detail-error { color:#b34f45; min-height:20px; margin:8px 0; }
 @media (max-width:700px) { .transaction-toolbar { flex-wrap:wrap; }.transaction-toolbar .search-box { flex-basis:100%; max-width:none; }.filter-chip { flex:1; min-width:0; }.transaction-detail-sheet { padding:16px; }.detail-head { flex-direction:column; }.detail-meta { min-width:0; }.detail-footer { margin-top:38px; }.detail-total { justify-content:space-between; } }
+
+.detail-actions {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: 18px;
+	margin-top: 24px;
+	padding-top: 18px;
+	border-top: 1px solid var(--line);
+}
+
+.detail-actions button {
+	min-width: 120px;
+	height: 40px;
+	padding: 0 18px;
+	border-radius: 5px;
+	font-size: 12px;
+	font-weight: 600;
+	border: 1px solid transparent;
+	transition: .15s ease;
+}
+
+#wrongInputButton {
+	background: #fff5d7;
+	color: #9a6c00;
+	border-color: #f0d98a;
+}
+
+#wrongInputButton:hover {
+	background: #ffedb5;
+	color: #765200;
+}
+
+#deleteInvoiceButton {
+	background: #f8e5e3;
+	color: var(--danger);
+	border-color: #dfb5b0;
+}
+
+#deleteInvoiceButton:hover {
+	background: #f1d2ce;
+	color: #913c34;
+}
+
+.detail-toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin-bottom: 14px;
+}
+
+.detail-toolbar .back-link {
+	margin-bottom: 0;
+}
+
+#downloadTransactionPdf {
+	min-width: 150px;
+	height: 40px;
+	border: 1px solid #d5d7d3;
+}
+
+#downloadTransactionPdf:hover {
+	background: #dfe1de;
+}

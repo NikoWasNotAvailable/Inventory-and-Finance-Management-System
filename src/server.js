@@ -41,6 +41,14 @@ app.get('/transaction.css', async (_request, reply) => {
   reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'transaction.css')));
 });
 
+app.get('/income.html', async (_request, reply) => {
+  reply.type('text/html').send(fs.readFileSync(path.join(publicDir, 'income.html')));
+});
+
+app.get('/income.css', async (_request, reply) => {
+  reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'income.css')));
+});
+
 app.get('/styles.css', async (_request, reply) => {
   reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'styles.css')));
 });
@@ -51,6 +59,60 @@ app.get('/app.js', async (_request, reply) => {
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const paymentMethods = new Set(['cash', 'transfer', 'other']);
+const periodPattern = /^\d{4}-\d{2}(-\d{2})?$/;
+
+function profitBoardRows(bucket) {
+  return db.prepare(`
+    WITH buckets AS (
+      SELECT ${bucket('invoice_date')} AS period,
+             SUM(total_amount - paid_amount) AS piutang, 0 AS collected,
+             0 AS hutang, 0 AS hutang_paid, 0 AS others
+        FROM invoices
+       WHERE is_void = 0 AND total_amount > paid_amount
+       GROUP BY period
+      UNION ALL
+      SELECT ${bucket('paid_at')}, 0, SUM(profit), 0, 0, 0
+        FROM v_income_events GROUP BY 1
+      UNION ALL
+      SELECT ${bucket('purchase_date')}, 0, 0, SUM(total_amount - paid_amount), 0, 0
+        FROM purchases WHERE total_amount > paid_amount GROUP BY 1
+      UNION ALL
+      SELECT ${bucket('paid_at')}, 0, 0, 0, SUM(amount), 0
+        FROM purchase_payments GROUP BY 1
+      UNION ALL
+      SELECT ${bucket('expense_date')}, 0, 0, 0, 0, SUM(amount)
+        FROM expenses GROUP BY 1
+    )
+    SELECT period,
+           COALESCE(SUM(piutang), 0)     AS piutang,
+           COALESCE(SUM(collected), 0)   AS collected,
+           COALESCE(SUM(piutang), 0) + COALESCE(SUM(collected), 0) AS income,
+           COALESCE(SUM(hutang), 0)      AS hutang,
+           COALESCE(SUM(hutang_paid), 0) AS hutang_paid,
+           COALESCE(SUM(others), 0)      AS others,
+           COALESCE(SUM(hutang), 0) + COALESCE(SUM(hutang_paid), 0)
+             + COALESCE(SUM(others), 0)  AS outcome,
+           COALESCE(SUM(piutang), 0) + COALESCE(SUM(collected), 0)
+             - COALESCE(SUM(hutang), 0) - COALESCE(SUM(hutang_paid), 0)
+             - COALESCE(SUM(others), 0)  AS profit
+      FROM buckets
+     GROUP BY period
+     ORDER BY period
+  `).all();
+}
+
+app.get('/api/reports/profit-board', async (request) => {
+  const now = new Date();
+  const year = /^\d{4}$/.test(String(request.query.year || '')) ? String(request.query.year) : String(now.getFullYear());
+  const month = /^\d{2}$/.test(String(request.query.month || '')) ? String(request.query.month) : String(now.getMonth() + 1).padStart(2, '0');
+  const rows = profitBoardRows((column) => `strftime('%Y-%m', ${column})`);
+  return {
+    year,
+    month,
+    monthly: rows.filter((row) => row.period.startsWith(`${year}-`)),
+    daily: profitBoardRows((column) => `date(${column})`).filter((row) => row.period.startsWith(`${year}-${month}`)),
+  };
+});
 
 function fail(message, statusCode = 400) {
   const error = new Error(message);
@@ -511,12 +573,24 @@ app.post('/api/invoices/:id/void', async (request) => {
   return db.prepare('SELECT * FROM v_invoices WHERE id = ?').get(id);
 });
 
+app.get('/api/expense-categories', async () => db.prepare(`
+  SELECT * FROM expense_categories WHERE is_active = 1 ORDER BY id
+`).all());
+
 app.get('/api/expenses', async () => db.prepare(`
   SELECT e.*, c.name AS category_name
     FROM expenses e
     JOIN expense_categories c ON c.id = e.category_id
    ORDER BY e.expense_date DESC, e.id DESC
 `).all());
+
+app.delete('/api/expenses/:id', async (request) => {
+  const id = requiredPositiveInteger(Number(request.params.id), 'id');
+  const expense = db.prepare('SELECT id FROM expenses WHERE id = ?').get(id);
+  if (!expense) fail('Expense not found', 404);
+  db.prepare('DELETE FROM expenses WHERE id = ?').run(id);
+  return { deleted: true, id };
+});
 
 app.post('/api/expenses', async (request, reply) => {
   const body = request.body || {};

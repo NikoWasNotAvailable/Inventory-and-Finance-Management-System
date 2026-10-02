@@ -16,7 +16,7 @@
         <a class="nav-item" href="/invoice.html"><span class="nav-icon">✎</span> Invoice</a>
         <a class="nav-item" href="/payment.html"><span class="nav-icon">▤</span> Payment</a>
         <a class="nav-item active" href="/transaction.html"><span class="nav-icon">≡</span> Transaction</a>
-        <a class="nav-item" href="#"><span class="nav-icon">$</span> Income</a>
+        <a class="nav-item" href="/income.html"><span class="nav-icon">$</span> Income</a>
       </nav>
       <div class="sidebar-footer">LOCAL INVENTORY<br><span>v1.0</span></div>
     </aside>
@@ -28,7 +28,7 @@
         <section class="table-card transaction-table-card"><div class="table-scroll"><table><thead><tr><th>From</th><th>Date</th><th>D/O</th><th>Cust</th><th>Total Price</th><th>Status</th><th aria-label="Actions"></th></tr></thead><tbody id="transactionRows"><tr><td class="empty-state" colspan="7">Loading transactions...</td></tr></tbody></table></div></section>
       </section>
       <section id="transactionDetailView" hidden>
-        <a class="back-link" href="/transaction.html">← Back to transactions</a>
+        <div class="detail-toolbar"><a class="back-link" href="/transaction.html">← Back to transactions</a><button id="downloadTransactionPdf" class="secondary-button" type="button">⤓ Download PDF</button></div>
         <section id="transactionDetail" class="transaction-detail-sheet"><p class="empty-state">Loading detail...</p></section>
       </section>
     </main>

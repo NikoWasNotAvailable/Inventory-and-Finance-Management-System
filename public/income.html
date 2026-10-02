@@ -21,12 +21,96 @@
       <div class="sidebar-footer">LOCAL INVENTORY<br><span>v1.0</span></div>
     </aside>
     <main class="main-content income-page">
-      <header class="page-header"><div><p class="eyebrow">COLLECTED PROFIT</p><h1>Income Page</h1></div><div class="header-status"><span class="status-dot"></span> Local database</div></header>
-      <section class="income-toolbar"><label class="income-select"><span>Period</span><select id="incomePeriod"></select></label><div class="income-kpis"><div><span>Income</span><strong id="incomeKpi">Rp 0</strong></div><div><span>Outcome</span><strong id="outcomeKpi">Rp 0</strong></div><div><span>Net</span><strong id="netKpi">Rp 0</strong></div></div></section>
-      <section class="income-grid-top"><article class="chart-card"><div class="card-heading"><div><h2>Monthly Profit</h2><p>Collected profit by month</p></div><span class="legend income-legend">Income</span></div><div id="profitChart" class="bar-chart"></div></article><article class="chart-card"><div class="card-heading"><div><h2>Revenue Segments</h2><p>Income, outcome, and net comparison</p></div></div><div id="segmentChart" class="segment-chart"></div></article></section>
-      <section id="monthlyCards" class="monthly-grid"></section>
+      <header class="page-header">
+        <div><p class="eyebrow">INCOME &amp; OUTCOME</p><h1>Income Page</h1></div>
+        <div class="header-status"><span class="status-dot"></span> Local database</div>
+      </header>
+
+      <section class="income-toolbar">
+        <label class="income-select"><span>Year</span><select id="incomeYear"></select></label>
+        <label class="income-select"><span>Month</span><select id="incomeMonth"></select></label>
+        <div class="income-kpis">
+          <div><span>Income</span><strong id="incomeKpi">Rp 0</strong></div>
+          <div><span>Outcome</span><strong id="outcomeKpi">Rp 0</strong></div>
+          <div><span>Profit</span><strong id="netKpi">Rp 0</strong></div>
+        </div>
+      </section>
+      <p class="income-note">Income = piutang + clean profit (piutang yang sudah dibayar). Outcome = hutang + hutang yang sudah dibayar + Others.</p>
+
+      <section class="income-grid-top">
+        <article class="chart-card">
+          <div class="card-heading">
+            <div><h2>Profit Bulan Ini</h2><p id="monthProfitCaption">—</p></div>
+            <span class="legend income-legend">Profit</span>
+          </div>
+          <div id="monthProfitChart" class="chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="card-heading">
+            <div><h2>Profit Tahun Ini</h2><p id="yearProfitCaption">—</p></div>
+            <span class="legend income-legend">Profit</span>
+          </div>
+          <div id="yearProfitChart" class="chart"></div>
+        </article>
+      </section>
+
+      <section class="income-grid-bottom">
+        <article class="chart-card">
+          <div class="card-heading">
+            <div><h2>Income</h2><p>Piutang + clean profit per month</p></div>
+          </div>
+          <div class="chart-legend">
+            <span><i class="swatch piutang"></i>Piutang</span>
+            <span><i class="swatch collected"></i>Clean profit</span>
+          </div>
+          <div id="incomeChart" class="chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="card-heading">
+            <div><h2>Outcome</h2><p>Hutang, hutang dibayar, dan Others</p></div>
+            <button id="addOthersButton" class="chart-action" type="button" title="Tambah biaya operasional">+ Others</button>
+          </div>
+          <div class="chart-legend">
+            <span><i class="swatch hutang"></i>Hutang</span>
+            <span><i class="swatch hutang-paid"></i>Hutang dibayar</span>
+            <span><i class="swatch others"></i>Others</span>
+          </div>
+          <div id="outcomeChart" class="chart"></div>
+          <ul id="othersList" class="others-list"></ul>
+        </article>
+        <article class="chart-card">
+          <div class="card-heading">
+            <div><h2>Profit</h2><p>Income - outcome per bulan</p></div>
+          </div>
+          <div id="profitChart" class="chart"></div>
+        </article>
+      </section>
     </main>
   </div>
-  <script src="/app.js?v=11" defer></script>
+
+  <dialog id="othersDialog">
+    <form id="othersForm">
+      <div class="dialog-heading">
+        <div><p class="eyebrow">OPERATIONAL COST</p><h2>Add Others</h2></div>
+        <button id="closeOthersDialog" class="icon-button" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="form-grid">
+        <label>Date<input id="othersDate" type="date" required></label>
+        <label>Category
+          <select id="othersCategory"></select>
+        </label>
+        <label class="full-width">Description<input id="othersDescription" type="text" placeholder="Listrik, sewa, ongkir..." required></label>
+        <label class="full-width">Amount<input id="othersAmount" type="text" inputmode="numeric" placeholder="500000" required></label>
+        <label class="full-width">Note<input id="othersNote" type="text"></label>
+      </div>
+      <p id="othersError" class="form-error"></p>
+      <div class="dialog-actions">
+        <button id="cancelOthersDialog" class="secondary-button" type="button">Cancel</button>
+        <button class="primary-button" type="submit">Save cost</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/app.js?v=12" defer></script>
 </body>
 </html>

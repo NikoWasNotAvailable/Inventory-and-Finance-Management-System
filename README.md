@@ -31,12 +31,27 @@ npm run dev
 - `POST /api/invoices/:id/payments`
 - `POST /api/invoices/:id/void`
 - `GET|POST /api/expenses`
+- `DELETE /api/expenses/:id`
+- `GET /api/expense-categories`
 - `GET /api/stock`
 - `GET /api/stock/:productId/lots`
 - `GET /api/reports/income`
 - `GET /api/reports/outcome`
 - `GET /api/reports/net`
 - `GET /api/reports/profit-by-product`
+- `GET /api/reports/profit-board?year=2026&month=10`
+
+## Halaman Income
+
+`GET /api/reports/profit-board` mengembalikan bucket per bulan (`monthly`) dan per
+hari (`daily`) dari satu tahun/bulan terpilih:
+
+- `piutang` = sisa invoice yang belum lunas, dikelompokkan per `invoice_date`
+- `collected` = clean profit dari piutang yang sudah dibayar (dari `v_income_events`, per `paid_at`)
+- `hutang` = sisa pembelian yang belum lunas, per `purchase_date`
+- `hutang_paid` = pembelian yang sudah dibayar, per `paid_at`
+- `others` = biaya operasional dari tabel `expenses`, per `expense_date`
+- `income` = piutang + collected, `outcome` = hutang + hutang_paid + others, `profit` = income - outcome
 
 ## Contoh payload
 
