@@ -1,4 +1,4 @@
-const state = { purchases: [], stores: [], products: [] };
+const state = { purchases: [], stores: [], products: [], stock: [] };
 let editingPurchaseId = null;
 let invoiceLines = [];
 const $ = (selector) => document.querySelector(selector);
@@ -35,7 +35,7 @@ function renderRows() {
   $('#purchaseRows').innerHTML = rows.length ? rows.map((row) => `
     <tr>
       <td>${escapeHtml(row.store_name)}</td><td>${formatDate(row.purchase_date)}</td>
-      <td><strong>${escapeHtml(row.product_name)}</strong></td><td>${row.quantity} ${escapeHtml(row.unit)}</td>
+      <td><strong>${escapeHtml(row.product_name)}</strong></td><td>${row.qty_remaining} ${escapeHtml(row.unit)}</td>
       <td>${rupiah(row.unit_price)}</td><td>${rupiah(row.total_amount)}</td>
       <td><span class="status-badge ${row.status}">${row.status}</span></td>
       <td><div class="action-set"><button class="action-button edit-purchase" title="Edit item" type="button" data-id="${row.id}">✎</button><button class="action-button delete-purchase" title="Delete item" type="button" data-id="${row.id}">⌫</button></div></td>
@@ -48,22 +48,32 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function parseMoneyInput(value) { return Number(String(value).replace(/[^0-9]/g, '')) || 0; }
 
 function renderInvoiceLines() {
+  const stockByProduct = new Map(state.stock.map((product) => [product.product_id, product]));
   $('#invoiceItems').innerHTML = invoiceLines.map((line, index) => `
     <div class="invoice-line" data-index="${index}">
-      <input class="invoice-quantity" type="number" min="1" step="1" value="${line.quantity || ''}" placeholder="Qty" aria-label="Quantity">
-      <input class="invoice-product" type="text" value="${escapeHtml(line.productName)}" placeholder="Product name" aria-label="Product name">
-      <input class="invoice-unit" type="text" value="${escapeHtml(line.unit || 'PCK')}" aria-label="Unit" readonly>
+      <label class="quantity-with-unit"><input class="invoice-quantity" type="number" min="1" max="${line.maxQuantity || ''}" step="1" value="${line.quantity || ''}" placeholder="Qty" aria-label="Quantity"><span>${escapeHtml(line.unit || 'PCK')}</span></label>
+      <input class="invoice-product" list="invoiceProductOptions" value="${escapeHtml(line.productName)}" placeholder="Search product" aria-label="Product">
       <input class="invoice-price" type="text" inputmode="numeric" value="${line.unitPrice || ''}" placeholder="50000" aria-label="Unit price">
       <strong class="invoice-line-total">${rupiah(line.quantity * line.unitPrice)}</strong>
       <button class="remove-line" type="button" data-index="${index}" title="Remove line" aria-label="Remove line">×</button>
     </div>`).join('');
+  if (!$('#invoiceProductOptions')) {
+    const dataList = document.createElement('datalist');
+    dataList.id = 'invoiceProductOptions';
+    document.body.appendChild(dataList);
+  }
+  $('#invoiceProductOptions').innerHTML = state.products.filter((product) => (stockByProduct.get(product.id)?.qty_on_hand || 0) > 0).map((product) => {
+    const stock = stockByProduct.get(product.id);
+    const quantity = stock?.qty_on_hand || 0;
+    return `<option value="${escapeHtml(product.name)}" label="${quantity} ${escapeHtml(product.unit)} available"></option>`;
+  }).join('');
   $('#invoiceTotal').textContent = rupiah(invoiceLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0));
 }
 
 function resetInvoice() {
   $('#invoiceForm').reset();
   $('#invoiceDate').value = today();
-  invoiceLines = [{ quantity: 0, productName: '', unit: 'PCK', unitPrice: 0 }];
+  invoiceLines = [{ quantity: 0, productId: null, productName: '', unit: 'PCK', maxQuantity: 0, unitPrice: 0 }];
   $('#invoiceError').textContent = '';
   renderInvoiceLines();
 }
@@ -85,12 +95,20 @@ async function downloadInvoicePdf(invoiceId) {
 function readInvoiceLine(element) {
   const row = element.closest('.invoice-line');
   const index = Number(row.dataset.index);
+  const productInput = row.querySelector('.invoice-product');
+  const selectedProduct = state.products.find((product) => product.name.toLowerCase() === productInput.value.trim().toLowerCase());
+  const stock = selectedProduct && state.stock.find((item) => item.product_id === selectedProduct.id);
+  const selectedStock = Number(stock?.qty_on_hand || 0);
   invoiceLines[index] = {
+    productId: selectedProduct?.id || null,
     quantity: Number(row.querySelector('.invoice-quantity').value) || 0,
-    productName: row.querySelector('.invoice-product').value,
-    unit: row.querySelector('.invoice-unit').value,
+    productName: selectedProduct?.name || productInput.value,
+    unit: selectedProduct?.unit || 'PCK',
+    maxQuantity: selectedStock,
     unitPrice: parseMoneyInput(row.querySelector('.invoice-price').value),
   };
+  row.querySelector('.quantity-with-unit span').textContent = invoiceLines[index].unit;
+  row.querySelector('.invoice-quantity').max = selectedStock || '';
   row.querySelector('.invoice-line-total').textContent = rupiah(invoiceLines[index].quantity * invoiceLines[index].unitPrice);
   $('#invoiceTotal').textContent = rupiah(invoiceLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0));
 }
@@ -103,8 +121,9 @@ function showPage(page) {
 }
 
 async function loadData() {
-  [state.purchases, state.stores, state.products] = await Promise.all([api('/api/purchases'), api('/api/stores'), api('/api/products')]);
+  [state.purchases, state.stores, state.products, state.stock] = await Promise.all([api('/api/purchases'), api('/api/stores'), api('/api/products'), api('/api/stock')]);
   renderStores(); renderRows();
+  if ($('#invoiceItems')) renderInvoiceLines();
 }
 
 function openDialog() {
@@ -179,14 +198,15 @@ loadData().catch((error) => {
 });
 
 $('#addInvoiceLine')?.addEventListener('click', () => {
-  invoiceLines.push({ quantity: 0, productName: '', unit: 'PCK', unitPrice: 0 });
+  invoiceLines.push({ quantity: 0, productId: null, productName: '', unit: 'PCK', maxQuantity: 0, unitPrice: 0 });
   renderInvoiceLines();
 });
 $('#invoiceItems')?.addEventListener('input', (event) => readInvoiceLine(event.target));
+$('#invoiceItems')?.addEventListener('change', (event) => readInvoiceLine(event.target));
 $('#invoiceItems')?.addEventListener('click', (event) => {
   if (!event.target.classList.contains('remove-line')) return;
   invoiceLines.splice(Number(event.target.dataset.index), 1);
-  if (!invoiceLines.length) invoiceLines.push({ quantity: 0, productName: '', unit: 'PCK', unitPrice: 0 });
+  if (!invoiceLines.length) invoiceLines.push({ quantity: 0, productId: null, productName: '', unit: 'PCK', maxQuantity: 0, unitPrice: 0 });
   renderInvoiceLines();
 });
 $('#resetInvoice')?.addEventListener('click', resetInvoice);
@@ -201,8 +221,17 @@ $('#invoiceForm')?.addEventListener('submit', async (event) => {
       receiverName: $('#invoiceReceiver').value.trim() || null,
       poNumber: $('#invoiceNotes').value.trim() || null,
       doNumber: $('#invoiceDoNumber').value.trim() || undefined,
-      items: invoiceLines.map((line) => ({ productName: line.productName.trim(), unit: line.unit.trim(), quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })),
+      items: invoiceLines.map((line) => ({ productId: line.productId, quantity: Number(line.quantity), unitPrice: Number(line.unitPrice) })),
     };
+    if (invoiceLines.some((line) => !line.productId || line.quantity < 1 || line.quantity > line.maxQuantity || line.unitPrice < 0)) {
+      throw new Error('Choose a stocked product and enter a quantity within available stock');
+    }
+    const requested = new Map();
+    for (const line of invoiceLines) requested.set(line.productId, (requested.get(line.productId) || 0) + line.quantity);
+    for (const [productId, quantity] of requested) {
+      const stock = state.stock.find((item) => item.product_id === productId);
+      if (!stock || quantity > stock.qty_on_hand) throw new Error(`Stock available for ${stock?.product_name || 'product'}: ${stock?.qty_on_hand || 0} ${stock?.unit || ''}`);
+    }
     const invoice = await api('/api/invoices', { method: 'POST', body: JSON.stringify(payload) });
     await downloadInvoicePdf(invoice.id);
     window.alert(`Invoice ${invoice.do_number} created and downloaded as PDF`);

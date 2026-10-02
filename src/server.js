@@ -127,7 +127,6 @@ function createInvoicePdf(invoice, items) {
   text(125, 670, 9, invoice.po_number || '');
   text(45, 650, 10, 'QNT', true);
   text(120, 650, 10, 'Name', true);
-  text(315, 650, 10, 'Unit', true);
   text(365, 650, 10, 'Price', true);
   text(465, 650, 10, 'Total Price', true);
   line(left, 640, right, 640);
@@ -137,9 +136,8 @@ function createInvoicePdf(invoice, items) {
   for (let index = 0; index < 12; index += 1) {
     const item = items[index];
     if (item) {
-      text(45, y, 9, String(item.quantity));
+      text(45, y, 9, `${item.quantity} ${item.unit}`);
       text(120, y, 9, item.product_name);
-      text(315, y, 9, item.unit);
       text(365, y, 9, money(item.sell_price));
       text(465, y, 9, money(item.line_total));
     }
