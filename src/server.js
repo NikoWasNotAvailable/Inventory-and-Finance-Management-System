@@ -25,6 +25,14 @@ app.get('/invoice.html', async (_request, reply) => {
   reply.type('text/html').send(fs.readFileSync(path.join(publicDir, 'invoice.html')));
 });
 
+app.get('/transaction.html', async (_request, reply) => {
+  reply.type('text/html').send(fs.readFileSync(path.join(publicDir, 'transaction.html')));
+});
+
+app.get('/transaction.css', async (_request, reply) => {
+  reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'transaction.css')));
+});
+
 app.get('/styles.css', async (_request, reply) => {
   reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'styles.css')));
 });
@@ -121,15 +129,12 @@ function createInvoicePdf(invoice, items) {
   line(115, 700, 115, 728);
   text(46, 710, 9, 'D/O NO.');
   text(125, 710, 9, invoice.do_number);
-  box(left, 660, 210, 28);
-  line(115, 660, 115, 688);
-  text(46, 670, 9, 'PO CUST.');
-  text(125, 670, 9, invoice.po_number || '');
   text(45, 650, 10, 'QNT', true);
   text(120, 650, 10, 'Name', true);
   text(365, 650, 10, 'Price', true);
   text(465, 650, 10, 'Total Price', true);
   line(left, 640, right, 640);
+  line(445, 640, 445, 368);
 
   const rowHeight = 22;
   let y = 618;
@@ -144,6 +149,10 @@ function createInvoicePdf(invoice, items) {
     line(left, y - 8, right, y - 8);
     y -= rowHeight;
   }
+  box(left, 295, 325, 30);
+  line(115, 295, 115, 325);
+  text(46, 306, 10, 'PO CUST.', true);
+  text(125, 306, 9, invoice.po_number || '');
   box(390, 295, 169, 30);
   text(405, 306, 10, 'Total Rp.', true);
   text(475, 306, 10, money(invoice.total_amount), true);
@@ -380,6 +389,14 @@ app.get('/api/invoices', async (request) => {
     : db.prepare('SELECT * FROM v_invoices ORDER BY invoice_date DESC, id DESC').all();
 });
 
+app.get('/api/invoices/validate-numbers', async (request) => {
+  const doNumber = String(request.query.doNumber || '').trim();
+  const poNumber = String(request.query.poNumber || '').trim();
+  const duplicateDo = doNumber !== '' && Boolean(db.prepare('SELECT 1 FROM invoices WHERE do_number = ? COLLATE NOCASE LIMIT 1').get(doNumber));
+  const duplicatePo = poNumber !== '' && Boolean(db.prepare('SELECT 1 FROM invoices WHERE po_number = ? COLLATE NOCASE LIMIT 1').get(poNumber));
+  return { duplicateDo, duplicatePo };
+});
+
 app.get('/api/invoices/:id', async (request) => {
   const id = requiredPositiveInteger(Number(request.params.id), 'id');
   const invoice = db.prepare('SELECT * FROM v_invoices WHERE id = ?').get(id);
@@ -419,11 +436,14 @@ function createInvoice(body) {
   if (!sequence) fail('Invoice sequence setting is missing', 500);
   const nextSequence = Number(sequence.value);
   if (!Number.isInteger(nextSequence) || nextSequence < 1) fail('Invoice sequence setting is invalid', 500);
-  const doNumber = body.doNumber || `${nextSequence}/${invoiceDate.slice(5, 7)}${invoiceDate.slice(2, 4)}`;
+  const doNumber = String(body.doNumber || `${nextSequence}/${invoiceDate.slice(5, 7)}${invoiceDate.slice(2, 4)}`).trim();
+  const poNumber = String(body.poNumber || '').trim() || null;
+  if (db.prepare('SELECT 1 FROM invoices WHERE do_number = ? COLLATE NOCASE LIMIT 1').get(doNumber)) fail('D/O number already exists', 409);
+  if (poNumber && db.prepare('SELECT 1 FROM invoices WHERE po_number = ? COLLATE NOCASE LIMIT 1').get(poNumber)) fail('PO customer number already exists', 409);
   const invoiceResult = db.prepare(`
     INSERT INTO invoices (do_number, invoice_date, store_id, po_number, receiver_name, notes)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(doNumber, invoiceDate, store.id, body.poNumber || null, body.receiverName || null, body.notes || null);
+  `).run(doNumber, invoiceDate, store.id, poNumber, body.receiverName || null, body.notes || null);
   const insertItem = db.prepare(`
     INSERT INTO invoice_items (invoice_id, product_id, product_name, quantity, unit, unit_price)
     VALUES (?, ?, ?, ?, ?, ?)

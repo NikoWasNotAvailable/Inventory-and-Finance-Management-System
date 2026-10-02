@@ -232,6 +232,9 @@ $('#invoiceForm')?.addEventListener('submit', async (event) => {
       const stock = state.stock.find((item) => item.product_id === productId);
       if (!stock || quantity > stock.qty_on_hand) throw new Error(`Stock available for ${stock?.product_name || 'product'}: ${stock?.qty_on_hand || 0} ${stock?.unit || ''}`);
     }
+    const numberCheck = await api(`/api/invoices/validate-numbers?doNumber=${encodeURIComponent(payload.doNumber || '')}&poNumber=${encodeURIComponent(payload.poNumber || '')}`);
+    if (numberCheck.duplicateDo) throw new Error('D/O number already exists');
+    if (numberCheck.duplicatePo) throw new Error('PO customer number already exists');
     const invoice = await api('/api/invoices', { method: 'POST', body: JSON.stringify(payload) });
     await downloadInvoicePdf(invoice.id);
     window.alert(`Invoice ${invoice.do_number} created and downloaded as PDF`);
@@ -245,3 +248,23 @@ if (document.querySelector('[data-page-view]')) {
 } else if ($('#invoiceForm')) {
   resetInvoice();
 }
+
+async function loadTransactions() {
+  if (!$('#transactionRows')) return;
+  const history = new URLSearchParams(window.location.search).get('history') === '1';
+  const detailId = new URLSearchParams(window.location.search).get('id');
+  if (detailId) { $('#transactionListView').hidden = true; $('#transactionDetailView').hidden = false; await renderTransactionDetail(Number(detailId)); return; }
+  const invoices = await api(`/api/invoices?status=${history ? 'paid' : 'unpaid'}`);
+  $('#transactionTitle').textContent = history ? 'History' : 'Transaction Page';
+  document.querySelectorAll('.transaction-tab').forEach((tab) => tab.classList.toggle('active', history === tab.href.includes('history=1')));
+  $('#transactionRows').innerHTML = invoices.length ? invoices.map((invoice) => `<tr><td>${escapeHtml(invoice.store_name)}</td><td>${formatDate(invoice.invoice_date)}</td><td>${escapeHtml(invoice.do_number)}</td><td>${escapeHtml(invoice.po_number || '-')}</td><td>${rupiah(invoice.total_amount)}</td><td><span class="transaction-status ${history ? 'paid' : 'unpaid'}">${history ? 'PAID' : invoice.status}</span></td><td><a class="transaction-action" title="Open detail" href="/transaction.html?id=${invoice.id}">◉</a></td></tr>`).join('') : '<tr><td class="empty-state" colspan="7">No transactions found.</td></tr>';
+  $('#transactionSearch')?.addEventListener('input', (event) => { const query = event.target.value.toLowerCase().trim(); document.querySelectorAll('#transactionRows tr').forEach((row) => { row.hidden = query && !row.textContent.toLowerCase().includes(query); }); });
+}
+
+async function renderTransactionDetail(invoiceId) {
+  const invoice = await api(`/api/invoices/${invoiceId}`);
+  $('#transactionDetail').innerHTML = `<div class="detail-head"><div class="detail-brand"><h2>REZEKI MAKMUR</h2><p>Plastics and Other Resto Supplies<br>Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat</p></div><div class="detail-meta"><div><strong>TGL.</strong>${formatDate(invoice.invoice_date)}</div><div><strong>D/O NO.</strong>${escapeHtml(invoice.do_number)}</div><div><strong>Kepada YTH.</strong>${escapeHtml(invoice.store_name)}</div><div><strong>PO CUST.</strong>${escapeHtml(invoice.po_number || '-')}</div></div></div><table class="detail-items"><thead><tr><th>QNT</th><th>Name</th><th>Price</th><th>Total Price</th></tr></thead><tbody>${invoice.items.map((item) => `<tr><td>${item.quantity} ${escapeHtml(item.unit)}</td><td>${escapeHtml(item.product_name)}</td><td>${rupiah(item.sell_price)}</td><td>${rupiah(item.line_total)}</td></tr>`).join('')}</tbody></table><div class="detail-total"><span>Total Rp.</span><strong>${rupiah(invoice.total_amount)}</strong></div><p id="detailError" class="detail-error"></p><div class="detail-footer"><div><span>Yang menerima.</span><div class="detail-signature">${escapeHtml(invoice.receiver_name || '')}</div></div><button id="markPaidButton" class="paid-button" type="button">PAID</button><div><span>Hormat kami.</span><div class="detail-signature"></div></div></div>`;
+  $('#markPaidButton').addEventListener('click', async () => { if (!window.confirm('Confirm this invoice as fully paid?')) return; try { await api(`/api/invoices/${invoice.id}/payments`, { method: 'POST', body: JSON.stringify({ amount: invoice.balance, method: 'cash' }) }); window.location.href = '/transaction.html?history=1'; } catch (error) { $('#detailError').textContent = error.message; } });
+}
+
+loadTransactions().catch((error) => { if ($('#transactionRows')) $('#transactionRows').innerHTML = `<tr><td class="empty-state" colspan="7">${escapeHtml(error.message)}</td></tr>`; if ($('#transactionDetail')) $('#transactionDetail').innerHTML = `<p class="detail-error">${escapeHtml(error.message)}</p>`; });

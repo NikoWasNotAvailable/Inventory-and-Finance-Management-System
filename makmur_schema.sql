@@ -34,7 +34,7 @@
 -- =====================================================================
 
 PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
+PRAGMA journal_mode = DELETE;
 
 -- ---------------------------------------------------------------------
 -- USERS  (Manage User / Log Out)
@@ -264,6 +264,9 @@ CREATE INDEX idx_inv_pay_invoice    ON invoice_payments(invoice_id);
 CREATE INDEX idx_inv_pay_paid_at    ON invoice_payments(paid_at);
 CREATE INDEX idx_expenses_date     ON expenses(expense_date);
 CREATE INDEX idx_expenses_category ON expenses(category_id);
+CREATE UNIQUE INDEX idx_invoices_po_number_unique
+  ON invoices (po_number COLLATE NOCASE)
+ WHERE po_number IS NOT NULL AND trim(po_number) <> '';
 
 -- =====================================================================
 --  TRIGGERS - FIFO stock
