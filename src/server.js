@@ -29,6 +29,14 @@ app.get('/transaction.html', async (_request, reply) => {
   reply.type('text/html').send(fs.readFileSync(path.join(publicDir, 'transaction.html')));
 });
 
+app.get('/payment.html', async (_request, reply) => {
+  reply.type('text/html').send(fs.readFileSync(path.join(publicDir, 'payment.html')));
+});
+
+app.get('/payment.css', async (_request, reply) => {
+  reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'payment.css')));
+});
+
 app.get('/transaction.css', async (_request, reply) => {
   reply.type('text/css').send(fs.readFileSync(path.join(publicDir, 'transaction.css')));
 });
@@ -423,6 +431,17 @@ app.get('/api/invoices/:id/pdf', async (request, reply) => {
     .type('application/pdf')
     .header('Content-Disposition', `attachment; filename="invoice-${invoice.do_number.replace(/[^a-zA-Z0-9_-]/g, '-')}.pdf"`)
     .send(createInvoicePdf(invoice, items));
+});
+
+app.delete('/api/invoices/:id', async (request) => {
+  const invoiceId = requiredPositiveInteger(Number(request.params.id), 'id');
+  return db.transaction(() => {
+    const invoice = db.prepare('SELECT * FROM invoices WHERE id = ?').get(invoiceId);
+    if (!invoice) fail('Invoice not found', 404);
+    if (invoice.paid_amount > 0 || invoice.is_void) fail('Paid or void invoices cannot be deleted', 409);
+    db.prepare('DELETE FROM invoices WHERE id = ?').run(invoiceId);
+    return { deleted: true, id: invoiceId };
+  })();
 });
 
 function createInvoice(body) {

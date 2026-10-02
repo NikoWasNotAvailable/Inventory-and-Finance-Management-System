@@ -264,7 +264,27 @@ async function loadTransactions() {
 async function renderTransactionDetail(invoiceId) {
   const invoice = await api(`/api/invoices/${invoiceId}`);
   $('#transactionDetail').innerHTML = `<div class="detail-head"><div class="detail-brand"><h2>REZEKI MAKMUR</h2><p>Plastics and Other Resto Supplies<br>Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat</p></div><div class="detail-meta"><div><strong>TGL.</strong>${formatDate(invoice.invoice_date)}</div><div><strong>D/O NO.</strong>${escapeHtml(invoice.do_number)}</div><div><strong>Kepada YTH.</strong>${escapeHtml(invoice.store_name)}</div><div><strong>PO CUST.</strong>${escapeHtml(invoice.po_number || '-')}</div></div></div><table class="detail-items"><thead><tr><th>QNT</th><th>Name</th><th>Price</th><th>Total Price</th></tr></thead><tbody>${invoice.items.map((item) => `<tr><td>${item.quantity} ${escapeHtml(item.unit)}</td><td>${escapeHtml(item.product_name)}</td><td>${rupiah(item.sell_price)}</td><td>${rupiah(item.line_total)}</td></tr>`).join('')}</tbody></table><div class="detail-total"><span>Total Rp.</span><strong>${rupiah(invoice.total_amount)}</strong></div><p id="detailError" class="detail-error"></p><div class="detail-footer"><div><span>Yang menerima.</span><div class="detail-signature">${escapeHtml(invoice.receiver_name || '')}</div></div><button id="markPaidButton" class="paid-button" type="button">PAID</button><div><span>Hormat kami.</span><div class="detail-signature"></div></div></div>`;
+  $('#transactionDetail').insertAdjacentHTML('beforeend', '<div class="detail-actions"><button id="wrongInputButton" class="secondary-button" type="button">Wrong input</button><button id="deleteInvoiceButton" class="danger-button" type="button">Delete</button></div>');
   $('#markPaidButton').addEventListener('click', async () => { if (!window.confirm('Confirm this invoice as fully paid?')) return; try { await api(`/api/invoices/${invoice.id}/payments`, { method: 'POST', body: JSON.stringify({ amount: invoice.balance, method: 'cash' }) }); window.location.href = '/transaction.html?history=1'; } catch (error) { $('#detailError').textContent = error.message; } });
+  const removeInvoice = async (message, destination) => { if (!window.confirm(message)) return; try { await api(`/api/invoices/${invoice.id}`, { method: 'DELETE' }); window.location.href = destination; } catch (error) { $('#detailError').textContent = error.message; } };
+  $('#wrongInputButton').addEventListener('click', () => removeInvoice('This invoice is wrong input. Delete it and return stock?', '/invoice.html'));
+  $('#deleteInvoiceButton').addEventListener('click', () => removeInvoice('Delete this invoice permanently?', '/transaction.html'));
 }
 
 loadTransactions().catch((error) => { if ($('#transactionRows')) $('#transactionRows').innerHTML = `<tr><td class="empty-state" colspan="7">${escapeHtml(error.message)}</td></tr>`; if ($('#transactionDetail')) $('#transactionDetail').innerHTML = `<p class="detail-error">${escapeHtml(error.message)}</p>`; });
+
+async function loadPayments() {
+  if (!$('#paymentRows')) return;
+  const history = new URLSearchParams(window.location.search).get('history') === '1';
+  const purchases = await api(`/api/purchases?status=${history ? 'paid' : 'unpaid'}`);
+  $('#paymentTitle').textContent = history ? 'History' : 'Payment Page';
+  document.querySelectorAll('.payment-tab').forEach((tab) => {
+    tab.classList.toggle('active', history === tab.href.includes('history=1'));
+  });
+  const stores = [...new Map(purchases.map((purchase) => [purchase.store_id, purchase.store_name])).entries()];
+  $('#paymentStore').innerHTML = '<option value="">All stores</option>' + stores.map(([id, name]) => `<option value="${id}">${escapeHtml(name)}</option>`).join('');
+  const render = () => { const search = $('#paymentSearch').value.toLowerCase().trim(); const storeId = $('#paymentStore').value; const rows = purchases.filter((purchase) => (!storeId || String(purchase.store_id) === storeId) && (!search || `${purchase.store_name} ${purchase.product_name}`.toLowerCase().includes(search))); $('#paymentRows').innerHTML = rows.length ? rows.map((purchase) => `<tr><td>${escapeHtml(purchase.store_name)}</td><td>${formatDate(purchase.purchase_date)}</td><td>${escapeHtml(purchase.product_name)}</td><td>${purchase.quantity} ${escapeHtml(purchase.unit)}</td><td>${rupiah(purchase.unit_price)}</td><td>${rupiah(purchase.total_amount)}</td><td>${rupiah(purchase.balance)}</td><td><span class="payment-status ${purchase.status}">${purchase.status}</span></td><td>${history ? '' : `<button class="pay-button" type="button" data-id="${purchase.id}" data-balance="${purchase.balance}">Pay</button>`}</td></tr>`).join('') : '<tr><td class="payment-empty" colspan="9">No payments found.</td></tr>'; };
+  render(); $('#paymentSearch').addEventListener('input', render); $('#paymentStore').addEventListener('change', render); $('#paymentRows').addEventListener('click', async (event) => { const button = event.target.closest('.pay-button'); if (!button) return; if (!window.confirm('Mark this purchase debt as paid?')) return; try { await api(`/api/purchases/${button.dataset.id}/payments`, { method: 'POST', body: JSON.stringify({ amount: Number(button.dataset.balance), method: 'cash' }) }); window.location.href = '/payment.html?history=1'; } catch (error) { window.alert(error.message); } });
+}
+
+loadPayments().catch((error) => { if ($('#paymentRows')) $('#paymentRows').innerHTML = `<tr><td class="payment-empty" colspan="9">${escapeHtml(error.message)}</td></tr>`; });

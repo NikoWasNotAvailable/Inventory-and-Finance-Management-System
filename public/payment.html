@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makmur | Payment</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/payment.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark" aria-label="Makmur"><div class="brand-icon">M</div><strong>MAKMUR</strong></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item" href="/"><span class="nav-icon">▣</span> Product</a>
+        <a class="nav-item" href="/invoice.html"><span class="nav-icon">✎</span> Invoice</a>
+        <a class="nav-item active" href="/payment.html"><span class="nav-icon">▤</span> Payment</a>
+        <a class="nav-item" href="/transaction.html"><span class="nav-icon">≡</span> Transaction</a>
+        <a class="nav-item" href="#"><span class="nav-icon">$</span> Income</a>
+      </nav>
+      <div class="sidebar-footer">LOCAL INVENTORY<br><span>v1.0</span></div>
+    </aside>
+    <main class="main-content payment-page">
+      <header class="page-header"><div><p class="eyebrow">PAYABLE CONTROL</p><h1 id="paymentTitle">Payment Page</h1></div><div class="header-status"><span class="status-dot"></span> Local database</div></header>
+      <nav class="payment-tabs"><a class="payment-tab active" href="/payment.html">Open</a><a class="payment-tab" href="/payment.html?history=1">History</a></nav>
+      <section class="payment-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><input id="paymentSearch" type="search" placeholder="Search store or product..."></label><label class="payment-store-filter"><span>Store</span><select id="paymentStore"><option value="">All stores</option></select></label><button class="filter-chip" type="button">Date</button><button class="filter-chip" type="button">Price</button><button class="clock-button" type="button" aria-label="Recent payments">◷</button></section>
+      <section class="table-card payment-table-card"><div class="table-scroll"><table><thead><tr><th>From</th><th>Date</th><th>Name</th><th>QNT</th><th>Price</th><th>Total Price</th><th>Balance</th><th>Status</th><th aria-label="Actions"></th></tr></thead><tbody id="paymentRows"><tr><td class="empty-state" colspan="9">Loading payments...</td></tr></tbody></table></div></section>
+    </main>
+  </div>
+  <script src="/app.js?v=10" defer></script>
+</body>
+</html>

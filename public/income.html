@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Makmur | Income</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/income.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-mark" aria-label="Makmur"><div class="brand-icon">M</div><strong>MAKMUR</strong></div>
+      <nav class="nav-list" aria-label="Main navigation">
+        <a class="nav-item" href="/"><span class="nav-icon">▣</span> Product</a>
+        <a class="nav-item" href="/invoice.html"><span class="nav-icon">✎</span> Invoice</a>
+        <a class="nav-item" href="/payment.html"><span class="nav-icon">▤</span> Payment</a>
+        <a class="nav-item" href="/transaction.html"><span class="nav-icon">≡</span> Transaction</a>
+        <a class="nav-item active" href="/income.html"><span class="nav-icon">$</span> Income</a>
+      </nav>
+      <div class="sidebar-footer">LOCAL INVENTORY<br><span>v1.0</span></div>
+    </aside>
+    <main class="main-content income-page">
+      <header class="page-header"><div><p class="eyebrow">COLLECTED PROFIT</p><h1>Income Page</h1></div><div class="header-status"><span class="status-dot"></span> Local database</div></header>
+      <section class="income-toolbar"><label class="income-select"><span>Period</span><select id="incomePeriod"></select></label><div class="income-kpis"><div><span>Income</span><strong id="incomeKpi">Rp 0</strong></div><div><span>Outcome</span><strong id="outcomeKpi">Rp 0</strong></div><div><span>Net</span><strong id="netKpi">Rp 0</strong></div></div></section>
+      <section class="income-grid-top"><article class="chart-card"><div class="card-heading"><div><h2>Monthly Profit</h2><p>Collected profit by month</p></div><span class="legend income-legend">Income</span></div><div id="profitChart" class="bar-chart"></div></article><article class="chart-card"><div class="card-heading"><div><h2>Revenue Segments</h2><p>Income, outcome, and net comparison</p></div></div><div id="segmentChart" class="segment-chart"></div></article></section>
+      <section id="monthlyCards" class="monthly-grid"></section>
+    </main>
+  </div>
+  <script src="/app.js?v=11" defer></script>
+</body>
+</html>
