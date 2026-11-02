@@ -210,7 +210,6 @@ function createInvoicePdf(invoice, items) {
   const right = 559;
   text(left, 395, 16, 'REZEKI MAKMUR', true);
   text(left, 387, 8, 'Plastics and Other Resto Supplies');
-  text(left, 380, 8, 'Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat');
   box(350, 351, 209, 55);
   line(350, 395, 559, 395);
   line(400, 395, 400, 406);
@@ -226,7 +225,7 @@ function createInvoicePdf(invoice, items) {
   line(115, 358, 115, 372);
   text(46, 363, 8, 'D/O NO.');
   text(125, 363, 8, invoice.do_number);
-  text(45, 325, 9, 'QNT', true);
+  text(45, 325, 9, 'QTY', true);
   text(145, 325, 9, 'Name', true);
   text(340, 325, 9, 'Price', true);
   text(455, 325, 9, 'Total Price', true);
@@ -250,7 +249,7 @@ function createInvoicePdf(invoice, items) {
     textOn(continuation, left, 395, 16, 'REZEKI MAKMUR', true);
     textOn(continuation, left, 387, 8, 'Invoice continuation');
     textOn(continuation, left, 370, 10, `D/O NO. ${invoice.do_number}`);
-    textOn(continuation, 45, 340, 9, 'QNT', true);
+    textOn(continuation, 45, 340, 9, 'QTY', true);
     textOn(continuation, 145, 340, 9, 'Name', true);
     textOn(continuation, 340, 340, 9, 'Price', true);
     textOn(continuation, 455, 340, 9, 'Total Price', true);
@@ -512,7 +511,13 @@ app.get('/api/invoices/:id', async (request) => {
   if (!invoice) fail('Invoice not found', 404);
   return {
     ...invoice,
-    items: db.prepare('SELECT * FROM v_invoice_item_cost WHERE invoice_id = ?').all(id),
+    items: db.prepare(`
+      SELECT c.*, ii.unit
+        FROM v_invoice_item_cost c
+        JOIN invoice_items ii ON ii.id = c.invoice_item_id
+       WHERE c.invoice_id = ?
+       ORDER BY c.invoice_item_id
+    `).all(id),
     payments: db.prepare('SELECT * FROM invoice_payments WHERE invoice_id = ? ORDER BY paid_at, id').all(id),
   };
 });

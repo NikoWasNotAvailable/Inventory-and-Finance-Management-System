@@ -63,7 +63,6 @@ CREATE TABLE settings (
 INSERT INTO settings (key, value) VALUES
   ('company_name',    'REZEKI MAKMUR'),
   ('company_tagline', 'Plastics and Other Resto Supplies'),
-  ('company_address', 'Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat'),
   ('next_do_seq',     '1');   -- set to (last paper D/O number + 1), e.g. 14805
 
 -- ---------------------------------------------------------------------
@@ -112,7 +111,7 @@ CREATE TABLE purchases (
   purchase_date TEXT    NOT NULL
                 CHECK (purchase_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'),
   product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT,  -- "Name"
-  quantity      INTEGER NOT NULL CHECK (quantity > 0),                        -- "QNT"
+  quantity      INTEGER NOT NULL CHECK (quantity > 0),                        -- "QTY"
   unit_price    INTEGER NOT NULL CHECK (unit_price >= 0),                     -- "Price" = cost per unit
   total_amount  INTEGER GENERATED ALWAYS AS (quantity * unit_price) STORED,   -- "Total Price"
   qty_sold      INTEGER NOT NULL DEFAULT 0 CHECK (qty_sold >= 0),
@@ -176,7 +175,7 @@ CREATE TABLE invoices (
   CHECK (paid_amount <= total_amount)
 );
 
--- INVOICE_ITEMS: printed lines (QNT, Name, Price, Total Price).
+-- INVOICE_ITEMS: printed lines (QTY, Name, Price, Total Price).
 --   INSERT => FIFO stock is taken automatically (see triggers).
 --   product_name / unit are snapshots for the printed document.
 --   unit_price is the SELLING price.
