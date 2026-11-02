@@ -254,11 +254,19 @@ async function loadTransactions() {
   const history = new URLSearchParams(window.location.search).get('history') === '1';
   const detailId = new URLSearchParams(window.location.search).get('id');
   if (detailId) { $('#transactionListView').hidden = true; $('#transactionDetailView').hidden = false; await renderTransactionDetail(Number(detailId)); return; }
-  const invoices = await api(`/api/invoices?status=${history ? 'paid' : 'unpaid'}`);
+  const [invoices, stores] = await Promise.all([api(`/api/invoices?status=${history ? 'paid' : 'unpaid'}`), api('/api/stores')]);
   $('#transactionTitle').textContent = history ? 'History' : 'Transaction Page';
   document.querySelectorAll('.transaction-tab').forEach((tab) => tab.classList.toggle('active', history === tab.href.includes('history=1')));
-  $('#transactionRows').innerHTML = invoices.length ? invoices.map((invoice) => `<tr><td>${escapeHtml(invoice.store_name)}</td><td>${formatDate(invoice.invoice_date)}</td><td>${escapeHtml(invoice.do_number)}</td><td>${escapeHtml(invoice.po_number || '-')}</td><td>${rupiah(invoice.total_amount)}</td><td><span class="transaction-status ${history ? 'paid' : 'unpaid'}">${history ? 'PAID' : invoice.status}</span></td><td><div class="transaction-actions"><button class="transaction-action download-pdf" type="button" data-id="${invoice.id}" title="Download PDF" aria-label="Download PDF">⤓</button><a class="transaction-action" title="Open detail" href="/transaction.html?id=${invoice.id}">◉</a></div></td></tr>`).join('') : '<tr><td class="empty-state" colspan="7">No transactions found.</td></tr>';
-  $('#transactionSearch')?.addEventListener('input', (event) => { const query = event.target.value.toLowerCase().trim(); document.querySelectorAll('#transactionRows tr').forEach((row) => { row.hidden = query && !row.textContent.toLowerCase().includes(query); }); });
+  $('#transactionStore').innerHTML = '<option value="">All stores</option>' + stores.map((store) => `<option value="${store.id}">${escapeHtml(store.name)}</option>`).join('');
+  const render = () => {
+    const storeId = $('#transactionStore').value;
+    const query = $('#transactionSearch').value.toLowerCase().trim();
+    const rows = invoices.filter((invoice) => (!storeId || String(invoice.store_id) === storeId) && (!query || `${invoice.store_name} ${invoice.do_number} ${invoice.po_number || ''}`.toLowerCase().includes(query)));
+    $('#transactionRows').innerHTML = rows.length ? rows.map((invoice) => `<tr><td>${escapeHtml(invoice.store_name)}</td><td>${formatDate(invoice.invoice_date)}</td><td>${escapeHtml(invoice.do_number)}</td><td>${escapeHtml(invoice.po_number || '-')}</td><td>${rupiah(invoice.total_amount)}</td><td><span class="transaction-status ${history ? 'paid' : 'unpaid'}">${history ? 'PAID' : invoice.status}</span></td><td><div class="transaction-actions"><button class="transaction-action download-pdf" type="button" data-id="${invoice.id}" title="Download PDF" aria-label="Download PDF">⤓</button><a class="transaction-action" title="Open detail" href="/transaction.html?id=${invoice.id}">◉</a></div></td></tr>`).join('') : '<tr><td class="empty-state" colspan="7">No transactions found.</td></tr>';
+  };
+  render();
+  $('#transactionSearch')?.addEventListener('input', render);
+  $('#transactionStore')?.addEventListener('change', render);
 }
 
 async function renderTransactionDetail(invoiceId) {
@@ -310,30 +318,34 @@ function renderBarChart(container, points, { signed = false, labelEvery = 1, emp
   const pad = { top: 20, right: 6, bottom: 20, left: 6 };
   const innerWidth = width - pad.left - pad.right;
   const innerHeight = height - pad.top - pad.bottom;
-  const totals = points.map((point) => (signed ? point.value : point.segments.reduce((sum, segment) => sum + segment.value, 0)));
+  const totals = points.map((point) => (signed
+    ? Math.abs(point.value)
+    : point.segments.reduce((sum, segment) => sum + segment.value, 0)));
   const max = Math.max(0, ...totals);
-  const min = Math.min(0, ...totals);
-  const range = max - min || 1;
-  const top = max === min ? 1 : max;
-  const scale = (value) => pad.top + (top - value) / range * innerHeight;
+  const range = max || 1;
+  const scale = (value) => pad.top + (max - value) / range * innerHeight;
   const slot = innerWidth / points.length;
   const barWidth = Math.max(3, Math.min(26, slot * 0.58));
-  const guides = [...new Set(signed ? [max, 0, min] : [max, max / 2, 0])];
-  const grid = guides.map((value) => `<line class="${value === 0 ? 'chart-axis' : 'chart-grid'}" x1="${pad.left}" y1="${scale(value).toFixed(1)}" x2="${width - pad.right}" y2="${scale(value).toFixed(1)}"></line>`
-    + `<text class="chart-label" x="${pad.left}" y="${(scale(value) - 3).toFixed(1)}">${compactMoney(value)}</text>`).join('');
+  const guides = [...new Set([max, max / 2, 0])];
+  const grid = guides.map((value) => {
+    const duplicateValue = points.some((point) => point.value === value);
+    return `<line class="${value === 0 ? 'chart-axis' : 'chart-grid'}" x1="${pad.left}" y1="${scale(value).toFixed(1)}" x2="${width - pad.right}" y2="${scale(value).toFixed(1)}"></line>`
+      + (duplicateValue ? '' : `<text class="chart-label" x="${pad.left}" y="${(scale(value) - 3).toFixed(1)}">${compactMoney(value)}</text>`);
+  }).join('');
   const bars = points.map((point, index) => {
     const x = pad.left + slot * index + (slot - barWidth) / 2;
     let cursor = 0;
     const segments = point.segments.map((segment) => {
       if (segment.value === 0 || (!signed && segment.value < 0)) return '';
+      const segmentValue = signed ? Math.abs(segment.value) : segment.value;
       const from = scale(signed ? 0 : cursor);
-      const to = scale(signed ? segment.value : cursor + segment.value);
+      const to = scale(signed ? segmentValue : cursor + segmentValue);
       if (!signed) cursor += segment.value;
       return `<rect x="${x.toFixed(1)}" y="${Math.min(from, to).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(1, Math.abs(to - from)).toFixed(1)}" rx="2" fill="${segment.color}"></rect>`;
     }).join('');
     const label = index % labelEvery === 0 || index === points.length - 1
       ? `<text class="chart-label" x="${(x + barWidth / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle">${escapeHtml(point.label)}</text>` : '';
-    const value = point.value ? `<text class="chart-value" x="${(x + barWidth / 2).toFixed(1)}" y="${(scale(point.value) + (point.value < 0 ? 10 : -5)).toFixed(1)}" text-anchor="middle">${compactMoney(point.value)}</text>` : '';
+    const value = point.value ? `<text class="chart-value" x="${(x + barWidth / 2).toFixed(1)}" y="${(scale(signed ? Math.abs(point.value) : point.value) - 5).toFixed(1)}" text-anchor="middle">${compactMoney(point.value)}</text>` : '';
     return `<g><title>${escapeHtml(point.title || point.label)}: ${rupiah(point.value)}</title>${segments}${value}${label}</g>`;
   }).join('');
   container.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(empty)}">${grid}${bars}</svg>`;
@@ -381,12 +393,12 @@ function renderIncomePage() {
   renderBarChart($('#incomeChart'), yearRows.map((item) => ({
     label: item.label, title: item.period, value: item.row.income,
     segments: [{ value: item.row.piutang, color: incomeColors.piutang }, { value: item.row.collected, color: incomeColors.collected }],
-  })), { empty: 'No income recorded in this year yet.' });
+  })), { labelEvery: 1, empty: 'No income recorded in this year yet.' });
   renderBarChart($('#outcomeChart'), yearRows.map((item) => ({
     label: item.label, title: item.period, value: item.row.outcome,
     segments: [{ value: item.row.hutang, color: incomeColors.hutang }, { value: item.row.hutang_paid, color: incomeColors.hutang_paid }, { value: item.row.others, color: incomeColors.others }],
-  })), { empty: 'No outcome recorded in this year yet.' });
-  renderBarChart($('#profitChart'), profitPoints(yearRows), { signed: true, empty: 'No profit recorded in this year yet.' });
+  })), { labelEvery: 1, empty: 'No outcome recorded in this year yet.' });
+  renderBarChart($('#profitChart'), profitPoints(yearRows), { signed: true, labelEvery: 1, empty: 'No profit recorded in this year yet.' });
   renderOthers(year, month);
 }
 

@@ -24,7 +24,7 @@
       <header class="page-header"><div><p class="eyebrow">RECEIVABLES CONTROL</p><h1 id="transactionTitle">Transaction Page</h1></div><div class="header-status"><span class="status-dot"></span> Local database</div></header>
       <section id="transactionListView">
         <nav class="transaction-tabs"><a class="transaction-tab active" href="/transaction.html">Open</a><a class="transaction-tab" href="/transaction.html?history=1">History</a></nav>
-        <section class="transaction-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><input id="transactionSearch" type="search" placeholder="Search..."></label><button class="filter-chip" type="button">Date</button><button class="filter-chip" type="button">Price</button><button class="filter-chip" type="button">Name</button><button class="clock-button" type="button" aria-label="Recent transactions">◷</button></section>
+        <section class="transaction-toolbar"><label class="search-box"><span aria-hidden="true">⌕</span><input id="transactionSearch" type="search" placeholder="Search..."></label><label class="payment-store-filter"><span>Store</span><select id="transactionStore"><option value="">All stores</option></select></label><button class="filter-chip" type="button">Date</button><button class="filter-chip" type="button">Price</button></section>
         <section class="table-card transaction-table-card"><div class="table-scroll"><table><thead><tr><th>From</th><th>Date</th><th>D/O</th><th>Cust</th><th>Total Price</th><th>Status</th><th aria-label="Actions"></th></tr></thead><tbody id="transactionRows"><tr><td class="empty-state" colspan="7">Loading transactions...</td></tr></tbody></table></div></section>
       </section>
       <section id="transactionDetailView" hidden>

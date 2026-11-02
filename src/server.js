@@ -182,61 +182,64 @@ function createInvoicePdf(invoice, items) {
 
   const left = 36;
   const right = 559;
-  text(left, 790, 20, 'REZEKI MAKMUR', true);
-  text(left, 774, 9, 'Plastics and Other Resto Supplies');
-  text(left, 761, 9, 'Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat');
-  box(350, 680, 209, 110);
-  line(350, 762, 559, 762);
-  line(350, 735, 559, 735);
-  line(350, 708, 559, 708);
-  line(400, 762, 400, 790);
-  text(360, 772, 9, 'TGL.');
-  text(412, 772, 9, date);
-  text(420, 744, 9, 'Kepada YTH.', true);
-  text(360, 717, 9, invoice.store_name);
-  if (invoice.store_address) text(360, 690, 9, invoice.store_address);
-  box(left, 700, 210, 28);
-  line(115, 700, 115, 728);
-  text(46, 710, 9, 'D/O NO.');
-  text(125, 710, 9, invoice.do_number);
-  text(45, 650, 10, 'QNT', true);
-  text(120, 650, 10, 'Name', true);
-  text(365, 650, 10, 'Price', true);
-  text(465, 650, 10, 'Total Price', true);
-  line(left, 640, right, 640);
-  line(445, 640, 445, 368);
+  text(left, 395, 16, 'REZEKI MAKMUR', true);
+  text(left, 387, 8, 'Plastics and Other Resto Supplies');
+  text(left, 380, 8, 'Jl. Prepedan Dalam No.9 Kel. Kamal, Jakarta Barat');
+  box(350, 351, 209, 55);
+  line(350, 395, 559, 395);
+  line(400, 395, 400, 406);
+  text(360, 399, 8, 'TGL.');
+  text(412, 399, 8, date);
+  text(428, 385, 8, 'Kepada YTH.', true);
+  line(350, 392, 559, 392);
+  text(360, 371, 8, invoice.store_name);
+  line(350, 378, 559, 378);
+  if (invoice.store_address) text(360, 357, 8, invoice.store_address);
+  line(350, 364, 559, 364);
+  box(left, 358, 210, 14);
+  line(115, 358, 115, 372);
+  text(46, 363, 8, 'D/O NO.');
+  text(125, 363, 8, invoice.do_number);
+  text(45, 325, 9, 'QNT', true);
+  text(120, 325, 9, 'Name', true);
+  text(310, 325, 9, 'Price', true);
+  text(430, 325, 9, 'Total Price', true);
+  line(left, 320, right, 320);
+  line(115, 320, 115, 184);
+  line(300, 320, 300, 184);
+  line(420, 320, 420, 184);
 
-  const rowHeight = 22;
-  let y = 618;
+  const rowHeight = 11;
+  let y = 309;
   for (let index = 0; index < 12; index += 1) {
     const item = items[index];
     if (item) {
-      text(45, y, 9, `${item.quantity} ${item.unit}`);
-      text(120, y, 9, item.product_name);
-      text(365, y, 9, money(item.sell_price));
-      text(465, y, 9, money(item.line_total));
+      text(45, y, 8, `${item.quantity} ${item.unit}`);
+      text(120, y, 8, item.product_name);
+      text(310, y, 8, money(item.sell_price));
+      text(430, y, 8, money(item.line_total));
     }
-    line(left, y - 8, right, y - 8);
+    line(left, y - 4, right, y - 4);
     y -= rowHeight;
   }
-  box(left, 295, 325, 30);
-  line(115, 295, 115, 325);
-  text(46, 306, 10, 'PO CUST.', true);
-  text(125, 306, 9, invoice.po_number || '');
-  box(390, 295, 169, 30);
-  text(405, 306, 10, 'Total Rp.', true);
-  text(475, 306, 10, money(invoice.total_amount), true);
-  text(70, 270, 10, 'Yang menerima.');
-  text(390, 270, 10, 'Hormat kami.');
-  line(70, 220, 170, 220);
-  line(390, 220, 490, 220);
-  if (invoice.receiver_name) text(70, 205, 9, invoice.receiver_name);
+  box(left, 148, 325, 15);
+  line(115, 148, 115, 163);
+  text(46, 153, 9, 'PO CUST.', true);
+  text(125, 153, 8, invoice.po_number || '');
+  box(390, 148, 169, 15);
+  text(405, 153, 9, 'Total Rp.', true);
+  text(475, 153, 9, money(invoice.total_amount), true);
+  text(70, 135, 9, 'Yang menerima.');
+  text(390, 135, 9, 'Hormat kami.');
+  line(70, 110, 170, 110);
+  line(390, 110, 490, 110);
+  if (invoice.receiver_name) text(70, 103, 8, invoice.receiver_name);
 
   const content = commands.join('\n');
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 421] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
     `<< /Length ${Buffer.byteLength(content, 'ascii')} >>\nstream\n${content}\nendstream`,
