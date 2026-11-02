@@ -1,6 +1,7 @@
 const state = { purchases: [], stores: [], products: [], stock: [] };
 let editingPurchaseId = null;
 let invoiceLines = [];
+const invoiceDraftKey = 'makmur.invoiceDraft';
 const $ = (selector) => document.querySelector(selector);
 const rupiah = (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0);
 const api = async (url, options) => {
@@ -70,12 +71,70 @@ function renderInvoiceLines() {
   $('#invoiceTotal').textContent = rupiah(invoiceLines.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0));
 }
 
+function saveInvoiceDraft() {
+  if (!$('#invoiceForm')) return;
+  const draft = {
+    invoiceDate: $('#invoiceDate').value,
+    customer: $('#invoiceCustomer').value,
+    address: $('#invoiceAddress').value,
+    receiver: $('#invoiceReceiver').value,
+    notes: $('#invoiceNotes').value,
+    doNumber: $('#invoiceDoNumber').value,
+    lines: invoiceLines.map((line) => ({
+      productId: line.productId,
+      productName: line.productName,
+      quantity: line.quantity,
+      unit: line.unit,
+      unitPrice: line.unitPrice,
+    })),
+  };
+  localStorage.setItem(invoiceDraftKey, JSON.stringify(draft));
+}
+
+function restoreInvoiceDraft() {
+  const rawDraft = localStorage.getItem(invoiceDraftKey);
+  if (!rawDraft) return false;
+  try {
+    const draft = JSON.parse(rawDraft);
+    if (!draft || !Array.isArray(draft.lines) || !draft.lines.length) return false;
+    $('#invoiceDate').value = draft.invoiceDate || today();
+    $('#invoiceCustomer').value = draft.customer || '';
+    $('#invoiceAddress').value = draft.address || '';
+    $('#invoiceReceiver').value = draft.receiver || '';
+    $('#invoiceNotes').value = draft.notes || '';
+    $('#invoiceDoNumber').value = draft.doNumber || '';
+    invoiceLines = draft.lines.map((line) => {
+      const product = state.products.find((item) => item.id === line.productId)
+        || state.products.find((item) => item.name.toLowerCase() === String(line.productName || '').toLowerCase());
+      const stock = product && state.stock.find((item) => item.product_id === product.id);
+      return {
+        productId: product?.id || null,
+        productName: product?.name || line.productName || '',
+        quantity: Number(line.quantity) || 0,
+        unit: product?.unit || line.unit || 'PCK',
+        maxQuantity: Number(stock?.qty_on_hand || 0),
+        unitPrice: Number(line.unitPrice) || 0,
+      };
+    });
+    renderInvoiceLines();
+    return true;
+  } catch (error) {
+    localStorage.removeItem(invoiceDraftKey);
+    return false;
+  }
+}
+
 function resetInvoice() {
   $('#invoiceForm').reset();
   $('#invoiceDate').value = today();
   invoiceLines = [{ quantity: 0, productId: null, productName: '', unit: 'PCK', maxQuantity: 0, unitPrice: 0 }];
   $('#invoiceError').textContent = '';
   renderInvoiceLines();
+}
+
+function clearInvoiceDraft() {
+  localStorage.removeItem(invoiceDraftKey);
+  resetInvoice();
 }
 
 async function downloadInvoicePdf(invoiceId) {
@@ -123,7 +182,7 @@ function showPage(page) {
 async function loadData() {
   [state.purchases, state.stores, state.products, state.stock] = await Promise.all([api('/api/purchases'), api('/api/stores'), api('/api/products'), api('/api/stock')]);
   renderStores(); renderRows();
-  if ($('#invoiceItems')) renderInvoiceLines();
+  if ($('#invoiceItems') && !restoreInvoiceDraft()) renderInvoiceLines();
 }
 
 function openDialog() {
@@ -200,16 +259,24 @@ loadData().catch((error) => {
 $('#addInvoiceLine')?.addEventListener('click', () => {
   invoiceLines.push({ quantity: 0, productId: null, productName: '', unit: 'PCK', maxQuantity: 0, unitPrice: 0 });
   renderInvoiceLines();
+  saveInvoiceDraft();
 });
-$('#invoiceItems')?.addEventListener('input', (event) => readInvoiceLine(event.target));
-$('#invoiceItems')?.addEventListener('change', (event) => readInvoiceLine(event.target));
+$('#invoiceItems')?.addEventListener('input', (event) => { readInvoiceLine(event.target); saveInvoiceDraft(); });
+$('#invoiceItems')?.addEventListener('change', (event) => { readInvoiceLine(event.target); saveInvoiceDraft(); });
 $('#invoiceItems')?.addEventListener('click', (event) => {
   if (!event.target.classList.contains('remove-line')) return;
   invoiceLines.splice(Number(event.target.dataset.index), 1);
   if (!invoiceLines.length) invoiceLines.push({ quantity: 0, productId: null, productName: '', unit: 'PCK', maxQuantity: 0, unitPrice: 0 });
   renderInvoiceLines();
+  saveInvoiceDraft();
 });
-$('#resetInvoice')?.addEventListener('click', resetInvoice);
+$('#resetInvoice')?.addEventListener('click', clearInvoiceDraft);
+$('#invoiceForm')?.addEventListener('input', (event) => {
+  if (!event.target.closest('#invoiceItems')) saveInvoiceDraft();
+});
+$('#invoiceForm')?.addEventListener('change', (event) => {
+  if (!event.target.closest('#invoiceItems')) saveInvoiceDraft();
+});
 $('#invoiceForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
   $('#invoiceError').textContent = '';
@@ -238,7 +305,7 @@ $('#invoiceForm')?.addEventListener('submit', async (event) => {
     const invoice = await api('/api/invoices', { method: 'POST', body: JSON.stringify(payload) });
     await downloadInvoicePdf(invoice.id);
     window.alert(`Invoice ${invoice.do_number} created and downloaded as PDF`);
-    resetInvoice();
+    clearInvoiceDraft();
     await loadData();
   } catch (error) { $('#invoiceError').textContent = error.message; }
 });
@@ -328,10 +395,31 @@ function renderBarChart(container, points, { signed = false, labelEvery = 1, emp
   const barWidth = Math.max(3, Math.min(26, slot * 0.58));
   const guides = [...new Set([max, max / 2, 0])];
   const grid = guides.map((value) => {
-    const duplicateValue = points.some((point) => point.value === value);
+    const duplicateValue = points.some((point) => (signed ? Math.abs(point.value) : point.value) === value);
     return `<line class="${value === 0 ? 'chart-axis' : 'chart-grid'}" x1="${pad.left}" y1="${scale(value).toFixed(1)}" x2="${width - pad.right}" y2="${scale(value).toFixed(1)}"></line>`
       + (duplicateValue ? '' : `<text class="chart-label" x="${pad.left}" y="${(scale(value) - 3).toFixed(1)}">${compactMoney(value)}</text>`);
   }).join('');
+  const valuePositions = [];
+  points.forEach((point, index) => {
+    if (!point.value) {
+      valuePositions.push(null);
+      return;
+    }
+    const x = pad.left + slot * index + (slot - barWidth) / 2 + barWidth / 2;
+    const y = scale(signed ? Math.abs(point.value) : point.value) - 5;
+    const previous = points[index - 1];
+    const previousY = previous?.value ? scale(signed ? Math.abs(previous.value) : previous.value) - 5 : null;
+    const previousPosition = valuePositions[index - 1];
+    const crowded = signed && previous?.value && previousPosition
+      && Math.abs(x - previousPosition.x) < 42 && Math.abs(y - previousY) < 16;
+    if (crowded) {
+      previousPosition.x -= 4;
+      previousPosition.anchor = 'end';
+      valuePositions.push({ x: x + 4, y, anchor: 'start' });
+    } else {
+      valuePositions.push({ x, y, anchor: 'middle' });
+    }
+  });
   const bars = points.map((point, index) => {
     const x = pad.left + slot * index + (slot - barWidth) / 2;
     let cursor = 0;
@@ -345,7 +433,8 @@ function renderBarChart(container, points, { signed = false, labelEvery = 1, emp
     }).join('');
     const label = index % labelEvery === 0 || index === points.length - 1
       ? `<text class="chart-label" x="${(x + barWidth / 2).toFixed(1)}" y="${height - 6}" text-anchor="middle">${escapeHtml(point.label)}</text>` : '';
-    const value = point.value ? `<text class="chart-value" x="${(x + barWidth / 2).toFixed(1)}" y="${(scale(signed ? Math.abs(point.value) : point.value) - 5).toFixed(1)}" text-anchor="middle">${compactMoney(point.value)}</text>` : '';
+    const valuePosition = valuePositions[index];
+    const value = valuePosition ? `<text class="chart-value" x="${valuePosition.x.toFixed(1)}" y="${valuePosition.y.toFixed(1)}" text-anchor="${valuePosition.anchor}">${compactMoney(point.value)}</text>` : '';
     return `<g><title>${escapeHtml(point.title || point.label)}: ${rupiah(point.value)}</title>${segments}${value}${label}</g>`;
   }).join('');
   container.innerHTML = `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(empty)}">${grid}${bars}</svg>`;

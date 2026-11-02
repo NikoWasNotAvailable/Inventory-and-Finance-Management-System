@@ -167,10 +167,15 @@ function pdfEscape(value) {
 
 function createInvoicePdf(invoice, items) {
   const commands = [];
+  const extraPages = [];
   const text = (x, y, size, value, bold = false) => {
     commands.push(`BT /${bold ? 'F2' : 'F1'} ${size} Tf ${x} ${y} Td (${pdfEscape(value)}) Tj ET`);
   };
+  const textOn = (target, x, y, size, value, bold = false) => {
+    target.push(`BT /${bold ? 'F2' : 'F1'} ${size} Tf ${x} ${y} Td (${pdfEscape(value)}) Tj ET`);
+  };
   const line = (x1, y1, x2, y2) => commands.push(`${x1} ${y1} m ${x2} ${y2} l S`);
+  const lineOn = (target, x1, y1, x2, y2) => target.push(`${x1} ${y1} m ${x2} ${y2} l S`);
   const box = (x, y, width, height) => {
     line(x, y, x + width, y);
     line(x + width, y, x + width, y + height);
@@ -179,6 +184,27 @@ function createInvoicePdf(invoice, items) {
   };
   const money = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
   const date = invoice.invoice_date ? invoice.invoice_date.split('-').reverse().join('/') : '';
+  const drawTotal = (target, useMainCommands = false) => {
+    const drawText = useMainCommands ? text : (x, y, size, value, bold = false) => textOn(target, x, y, size, value, bold);
+    const drawLine = useMainCommands ? line : (x1, y1, x2, y2) => lineOn(target, x1, y1, x2, y2);
+    drawLine(115, 148, 115, 163);
+    drawText(46, 153, 9, 'PO CUST.', true);
+    drawText(125, 153, 8, invoice.po_number || '');
+    if (useMainCommands) box(390, 148, 169, 15);
+    else {
+      drawLine(390, 148, 559, 148);
+      drawLine(559, 148, 559, 163);
+      drawLine(559, 163, 390, 163);
+      drawLine(390, 163, 390, 148);
+    }
+    drawText(405, 153, 9, 'Total Rp.', true);
+    drawText(475, 153, 9, money(invoice.total_amount), true);
+    drawText(70, 135, 9, 'Yang menerima.');
+    drawText(390, 135, 9, 'Hormat kami.');
+    drawLine(70, 110, 170, 110);
+    drawLine(390, 110, 490, 110);
+    if (invoice.receiver_name) drawText(70, 103, 8, invoice.receiver_name);
+  };
 
   const left = 36;
   const right = 559;
@@ -201,48 +227,58 @@ function createInvoicePdf(invoice, items) {
   text(46, 363, 8, 'D/O NO.');
   text(125, 363, 8, invoice.do_number);
   text(45, 325, 9, 'QNT', true);
-  text(120, 325, 9, 'Name', true);
-  text(310, 325, 9, 'Price', true);
-  text(430, 325, 9, 'Total Price', true);
-  line(left, 320, right, 320);
-  line(115, 320, 115, 184);
-  line(300, 320, 300, 184);
-  line(420, 320, 420, 184);
-
-  const rowHeight = 11;
+  text(145, 325, 9, 'Name', true);
+  text(340, 325, 9, 'Price', true);
+  text(455, 325, 9, 'Total Price', true);
+  const rowHeight = 13;
   let y = 309;
   for (let index = 0; index < 12; index += 1) {
     const item = items[index];
     if (item) {
       text(45, y, 8, `${item.quantity} ${item.unit}`);
-      text(120, y, 8, item.product_name);
-      text(310, y, 8, money(item.sell_price));
-      text(430, y, 8, money(item.line_total));
+      text(145, y, 8, item.product_name);
+      text(340, y, 8, money(item.sell_price));
+      text(455, y, 8, money(item.line_total));
     }
-    line(left, y - 4, right, y - 4);
     y -= rowHeight;
   }
-  box(left, 148, 325, 15);
-  line(115, 148, 115, 163);
-  text(46, 153, 9, 'PO CUST.', true);
-  text(125, 153, 8, invoice.po_number || '');
-  box(390, 148, 169, 15);
-  text(405, 153, 9, 'Total Rp.', true);
-  text(475, 153, 9, money(invoice.total_amount), true);
-  text(70, 135, 9, 'Yang menerima.');
-  text(390, 135, 9, 'Hormat kami.');
-  line(70, 110, 170, 110);
-  line(390, 110, 490, 110);
-  if (invoice.receiver_name) text(70, 103, 8, invoice.receiver_name);
+  if (items.length <= 12) {
+    box(left, 148, 325, 15);
+    drawTotal(commands, true);
+  } else {
+    const continuation = [];
+    textOn(continuation, left, 395, 16, 'REZEKI MAKMUR', true);
+    textOn(continuation, left, 387, 8, 'Invoice continuation');
+    textOn(continuation, left, 370, 10, `D/O NO. ${invoice.do_number}`);
+    textOn(continuation, 45, 340, 9, 'QNT', true);
+    textOn(continuation, 145, 340, 9, 'Name', true);
+    textOn(continuation, 340, 340, 9, 'Price', true);
+    textOn(continuation, 455, 340, 9, 'Total Price', true);
+    let continuationY = 324;
+    for (const item of items.slice(12)) {
+      textOn(continuation, 45, continuationY, 8, `${item.quantity} ${item.unit}`);
+      textOn(continuation, 145, continuationY, 8, item.product_name);
+      textOn(continuation, 340, continuationY, 8, money(item.sell_price));
+      textOn(continuation, 455, continuationY, 8, money(item.line_total));
+      continuationY -= 18;
+    }
+    drawTotal(continuation);
+    extraPages.push(continuation);
+  }
 
   const content = commands.join('\n');
+  const pageContents = [content, ...extraPages.map((page) => page.join('\n'))];
+  const pageObjectStart = 3;
+  const fontObjectStart = pageObjectStart + pageContents.length;
+  const contentObjectStart = fontObjectStart + 2;
+  const pageObjects = pageContents.map((_, index) => `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 421] /Resources << /Font << /F1 ${fontObjectStart} 0 R /F2 ${fontObjectStart + 1} 0 R >> >> /Contents ${contentObjectStart + index} 0 R >>`);
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 421] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
+    `<< /Type /Pages /Kids [${pageObjects.map((_, index) => `${pageObjectStart + index} 0 R`).join(' ')}] /Count ${pageObjects.length} >>`,
+    ...pageObjects,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
-    `<< /Length ${Buffer.byteLength(content, 'ascii')} >>\nstream\n${content}\nendstream`,
+    ...pageContents.map((page) => `<< /Length ${Buffer.byteLength(page, 'ascii')} >>\nstream\n${page}\nendstream`),
   ];
   let pdf = '%PDF-1.4\n';
   const offsets = [0];
