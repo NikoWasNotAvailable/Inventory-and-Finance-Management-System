@@ -4,6 +4,10 @@ let invoiceLines = [];
 const invoiceDraftKey = 'makmur.invoiceDraft';
 const $ = (selector) => document.querySelector(selector);
 const rupiah = (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0);
+const printRupiah = (value, width) => {
+  const formatted = new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value || 0);
+  return `<span class="print-money" style="width:${width + 4}ch"><span class="print-currency">Rp</span><span>${formatted}</span></span>`;
+};
 const api = async (url, options) => {
   const requestOptions = { ...options };
   if (requestOptions.body) {
@@ -339,7 +343,27 @@ async function loadTransactions() {
 
 async function renderTransactionDetail(invoiceId) {
   const invoice = await api(`/api/invoices/${invoiceId}`);
-  $('#transactionDetail').innerHTML = `<div class="detail-head"><div class="detail-brand"><div class="company-logo">M</div><div><h2>REZEKI MAKMUR</h2><p>Plastics and Other Resto Supplies</p></div></div><div class="detail-do"><strong>D/O NO.</strong><span>${escapeHtml(invoice.do_number)}</span></div><div class="detail-meta"><div><strong>TGL.</strong>${formatDate(invoice.invoice_date)}</div><div><strong>D/O NO.</strong>${escapeHtml(invoice.do_number)}</div><div><strong>Kepada</strong>${escapeHtml(invoice.store_name)}</div><div><strong>Alamat</strong>${escapeHtml(invoice.store_address || '-')}</div></div></div><table class="detail-items"><thead><tr><th>QTY</th><th>Name</th><th>Price</th><th>Total Price</th></tr></thead><tbody>${invoice.items.map((item) => `<tr><td>${item.quantity} ${escapeHtml(item.unit)}</td><td>${escapeHtml(item.product_name)}</td><td>${rupiah(item.sell_price)}</td><td>${rupiah(item.line_total)}</td></tr>`).join('')}</tbody></table><div class="detail-bottom"><div class="detail-po"><strong>PO CUST.</strong><span>${escapeHtml(invoice.po_number || '-')}</span></div><div class="detail-total"><span>Total Rp.</span><strong>${rupiah(invoice.total_amount)}</strong></div></div><p id="detailError" class="detail-error"></p><div class="detail-footer"><div><span>Yang menerima.</span><div class="detail-signature">${escapeHtml(invoice.receiver_name || '')}</div></div><button id="markPaidButton" class="paid-button" type="button">PAID</button><div><span>Hormat kami.</span><div class="detail-signature"></div></div></div>`;
+  const renderPrintPage = (items, total) => {
+    const formatAmount = (value) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value || 0);
+    const priceWidth = Math.max(...items.map((item) => formatAmount(item.sell_price).length), 1);
+    const totalWidth = Math.max(...items.map((item) => formatAmount(item.line_total).length), 1);
+    return `<div class="transaction-print-page"><div class="detail-head"><div class="detail-brand"><div class="company-logo">M</div><div><h2>REZEKI MAKMUR</h2><p>Plastics and Other Resto Supplies</p></div></div><div class="detail-do"><strong>D/O NO.</strong><span>${escapeHtml(invoice.do_number)}</span></div><div class="detail-meta"><div><strong>TGL.</strong>${formatDate(invoice.invoice_date)}</div><div><strong>D/O NO.</strong>${escapeHtml(invoice.do_number)}</div><div><strong>Kepada</strong>${escapeHtml(invoice.store_name)}</div><div><strong>Alamat</strong>${escapeHtml(invoice.store_address || '-')}</div></div></div><table class="detail-items"><thead><tr><th>QTY</th><th>Name</th><th>Price</th><th>Total Price</th></tr></thead><tbody>${items.map((item) => `<tr><td>${item.quantity} ${escapeHtml(item.unit)}</td><td>${escapeHtml(item.product_name)}</td><td>${printRupiah(item.sell_price, priceWidth)}</td><td>${printRupiah(item.line_total, totalWidth)}</td></tr>`).join('')}</tbody></table><div class="detail-bottom"><div class="detail-po"><strong>PO CUST.</strong><span>${escapeHtml(invoice.po_number || '-')}</span></div><div class="detail-total"><span>Total Rp.</span><strong>${rupiah(total)}</strong></div></div><div class="detail-footer"><div><span>Yang menerima.</span><div class="detail-signature">${escapeHtml(invoice.receiver_name || '')}</div></div><div><span>Hormat kami.</span><div class="detail-signature"></div></div></div></div>`;
+  };
+  const printPages = [];
+  for (let index = 0; index < invoice.items.length; index += 12) {
+    const items = invoice.items.slice(index, index + 12);
+    const total = index === 0 && invoice.items.length > 12
+      ? items.reduce((sum, item) => sum + Number(item.line_total || 0), 0)
+      : invoice.total_amount;
+    printPages.push(renderPrintPage(items, total));
+  }
+  const hasMultiplePages = printPages.length > 1;
+  $('#transactionDetail').classList.toggle('multi-page-source', hasMultiplePages);
+  const formatAmount = (value) => new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(value || 0);
+  const priceWidth = Math.max(...invoice.items.map((item) => formatAmount(item.sell_price).length), 1);
+  const totalWidth = Math.max(...invoice.items.map((item) => formatAmount(item.line_total).length), 1);
+  $('#transactionDetail').innerHTML = `<div class="detail-head"><div class="detail-brand"><div class="company-logo">M</div><div><h2>REZEKI MAKMUR</h2><p>Plastics and Other Resto Supplies</p></div></div><div class="detail-do"><strong>D/O NO.</strong><span>${escapeHtml(invoice.do_number)}</span></div><div class="detail-meta"><div><strong>TGL.</strong>${formatDate(invoice.invoice_date)}</div><div><strong>D/O NO.</strong>${escapeHtml(invoice.do_number)}</div><div><strong>Kepada</strong>${escapeHtml(invoice.store_name)}</div><div><strong>Alamat</strong>${escapeHtml(invoice.store_address || '-')}</div></div></div><table class="detail-items"><thead><tr><th>QTY</th><th>Name</th><th>Price</th><th>Total Price</th></tr></thead><tbody>${invoice.items.map((item) => `<tr><td>${item.quantity} ${escapeHtml(item.unit)}</td><td>${escapeHtml(item.product_name)}</td><td>${printRupiah(item.sell_price, priceWidth)}</td><td>${printRupiah(item.line_total, totalWidth)}</td></tr>`).join('')}</tbody></table><div class="detail-bottom"><div class="detail-po"><strong>PO CUST.</strong><span>${escapeHtml(invoice.po_number || '-')}</span></div><div class="detail-total"><span>Total Rp.</span><strong>${rupiah(invoice.total_amount)}</strong></div></div><p id="detailError" class="detail-error"></p><div class="detail-footer"><div><span>Yang menerima.</span><div class="detail-signature">${escapeHtml(invoice.receiver_name || '')}</div></div><button id="markPaidButton" class="paid-button" type="button">PAID</button><div><span>Hormat kami.</span><div class="detail-signature"></div></div></div>`;
+  $('#transactionDetail').insertAdjacentHTML('beforebegin', `<div id="transactionPrintPages" class="${hasMultiplePages ? 'has-multiple-pages' : ''}">${printPages.join('')}</div>`);
   $('#transactionDetail').insertAdjacentHTML('beforeend', '<div class="detail-actions"><button id="wrongInputButton" class="secondary-button" type="button">Wrong input</button><button id="deleteInvoiceButton" class="danger-button" type="button">Delete</button></div>');
   $('#markPaidButton').addEventListener('click', async () => { if (!window.confirm('Confirm this invoice as fully paid?')) return; try { await api(`/api/invoices/${invoice.id}/payments`, { method: 'POST', body: JSON.stringify({ amount: invoice.balance, method: 'cash' }) }); window.location.href = '/transaction.html?history=1'; } catch (error) { $('#detailError').textContent = error.message; } });
   const removeInvoice = async (message, destination) => { if (!window.confirm(message)) return; try { await api(`/api/invoices/${invoice.id}`, { method: 'DELETE' }); window.location.href = destination; } catch (error) { $('#detailError').textContent = error.message; } };

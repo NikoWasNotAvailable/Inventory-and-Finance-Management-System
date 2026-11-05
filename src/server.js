@@ -182,87 +182,82 @@ function createInvoicePdf(invoice, items) {
     line(x + width, y + height, x, y + height);
     line(x, y + height, x, y);
   };
+  const boxOn = (target, x, y, width, height) => {
+    lineOn(target, x, y, x + width, y);
+    lineOn(target, x + width, y, x + width, y + height);
+    lineOn(target, x + width, y + height, x, y + height);
+    lineOn(target, x, y + height, x, y);
+  };
   const money = (value) => `Rp ${Number(value || 0).toLocaleString('id-ID')}`;
   const date = invoice.invoice_date ? invoice.invoice_date.split('-').reverse().join('/') : '';
-  const drawTotal = (target, useMainCommands = false) => {
+  const drawTotal = (target, totalAmount, useMainCommands = false) => {
     const drawText = useMainCommands ? text : (x, y, size, value, bold = false) => textOn(target, x, y, size, value, bold);
     const drawLine = useMainCommands ? line : (x1, y1, x2, y2) => lineOn(target, x1, y1, x2, y2);
-    drawLine(115, 148, 115, 163);
-    drawText(46, 153, 9, 'PO CUST.', true);
-    drawText(125, 153, 8, invoice.po_number || '');
-    if (useMainCommands) box(390, 148, 169, 15);
+    drawLine(115, 125, 115, 140);
+    drawText(46, 130, 9, 'PO CUST.', true);
+    drawText(125, 130, 8, invoice.po_number || '');
+    if (useMainCommands) box(390, 125, 169, 15);
     else {
-      drawLine(390, 148, 559, 148);
-      drawLine(559, 148, 559, 163);
-      drawLine(559, 163, 390, 163);
-      drawLine(390, 163, 390, 148);
+      drawLine(390, 125, 559, 125);
+      drawLine(559, 125, 559, 140);
+      drawLine(559, 140, 390, 140);
+      drawLine(390, 140, 390, 125);
     }
-    drawText(405, 153, 9, 'Total Rp.', true);
-    drawText(475, 153, 9, money(invoice.total_amount), true);
-    drawText(70, 135, 9, 'Yang menerima.');
-    drawText(390, 135, 9, 'Hormat kami.');
-    drawLine(70, 110, 170, 110);
-    drawLine(390, 110, 490, 110);
-    if (invoice.receiver_name) drawText(70, 103, 8, invoice.receiver_name);
+    drawText(405, 130, 9, 'Total Rp.', true);
+    drawText(475, 130, 9, money(totalAmount), true);
+    drawText(70, 112, 9, 'Yang menerima.');
+    drawText(390, 112, 9, 'Hormat kami.');
+    drawLine(70, 87, 170, 87);
+    drawLine(390, 87, 490, 87);
+    if (invoice.receiver_name) drawText(70, 80, 8, invoice.receiver_name);
   };
 
   const left = 36;
   const right = 559;
-  text(left, 395, 16, 'REZEKI MAKMUR', true);
-  text(left, 387, 8, 'Plastics and Other Resto Supplies');
-  box(350, 351, 209, 55);
-  line(350, 395, 559, 395);
-  line(400, 395, 400, 406);
-  text(360, 399, 8, 'TGL.');
-  text(412, 399, 8, date);
-  text(428, 385, 8, 'Kepada YTH.', true);
-  line(350, 392, 559, 392);
-  text(360, 371, 8, invoice.store_name);
-  line(350, 378, 559, 378);
-  if (invoice.store_address) text(360, 357, 8, invoice.store_address);
-  line(350, 364, 559, 364);
-  box(left, 358, 210, 14);
-  line(115, 358, 115, 372);
-  text(46, 363, 8, 'D/O NO.');
-  text(125, 363, 8, invoice.do_number);
-  text(45, 325, 9, 'QTY', true);
-  text(145, 325, 9, 'Name', true);
-  text(340, 325, 9, 'Price', true);
-  text(455, 325, 9, 'Total Price', true);
-  const rowHeight = 13;
-  let y = 309;
-  for (let index = 0; index < 12; index += 1) {
-    const item = items[index];
-    if (item) {
-      text(45, y, 8, `${item.quantity} ${item.unit}`);
-      text(145, y, 8, item.product_name);
-      text(340, y, 8, money(item.sell_price));
-      text(455, y, 8, money(item.line_total));
+  const drawPage = (target, pageItems, totalAmount, useMainCommands = false) => {
+    const drawText = useMainCommands ? text : (x, y, size, value, bold = false) => textOn(target, x, y, size, value, bold);
+    const drawLine = useMainCommands ? line : (x1, y1, x2, y2) => lineOn(target, x1, y1, x2, y2);
+    const drawBox = useMainCommands ? box : (x, y, width, height) => boxOn(target, x, y, width, height);
+    drawText(left, 395, 16, 'REZEKI MAKMUR', true);
+    drawText(left, 387, 8, 'Plastics and Other Resto Supplies');
+    drawBox(350, 351, 209, 55);
+    drawLine(350, 395, 559, 395);
+    drawLine(400, 395, 400, 406);
+    drawText(360, 399, 8, 'TGL.');
+    drawText(412, 399, 8, date);
+    drawText(428, 385, 8, 'Kepada YTH.', true);
+    drawLine(350, 392, 559, 392);
+    drawText(360, 371, 8, invoice.store_name);
+    drawLine(350, 378, 559, 378);
+    if (invoice.store_address) drawText(360, 357, 8, invoice.store_address);
+    drawLine(350, 364, 559, 364);
+    drawBox(left, 358, 210, 14);
+    drawLine(115, 358, 115, 372);
+    drawText(46, 363, 8, 'D/O NO.');
+    drawText(125, 363, 8, invoice.do_number);
+    drawText(45, 325, 9, 'QTY', true);
+    drawText(145, 325, 9, 'Name', true);
+    drawText(340, 325, 9, 'Price', true);
+    drawText(455, 325, 9, 'Total Price', true);
+    let y = 309;
+    for (const item of pageItems) {
+      drawText(45, y, 8, `${item.quantity} ${item.unit}`);
+      drawText(145, y, 8, item.product_name);
+      drawText(340, y, 8, money(item.sell_price));
+      drawText(455, y, 8, money(item.line_total));
+      y -= 13;
     }
-    y -= rowHeight;
-  }
-  if (items.length <= 12) {
-    box(left, 148, 325, 15);
-    drawTotal(commands, true);
-  } else {
-    const continuation = [];
-    textOn(continuation, left, 395, 16, 'REZEKI MAKMUR', true);
-    textOn(continuation, left, 387, 8, 'Invoice continuation');
-    textOn(continuation, left, 370, 10, `D/O NO. ${invoice.do_number}`);
-    textOn(continuation, 45, 340, 9, 'QTY', true);
-    textOn(continuation, 145, 340, 9, 'Name', true);
-    textOn(continuation, 340, 340, 9, 'Price', true);
-    textOn(continuation, 455, 340, 9, 'Total Price', true);
-    let continuationY = 324;
-    for (const item of items.slice(12)) {
-      textOn(continuation, 45, continuationY, 8, `${item.quantity} ${item.unit}`);
-      textOn(continuation, 145, continuationY, 8, item.product_name);
-      textOn(continuation, 340, continuationY, 8, money(item.sell_price));
-      textOn(continuation, 455, continuationY, 8, money(item.line_total));
-      continuationY -= 18;
-    }
-    drawTotal(continuation);
-    extraPages.push(continuation);
+    drawBox(left, 125, 325, 15);
+    drawTotal(target, totalAmount, useMainCommands);
+  };
+  const pageItems = [];
+  for (let index = 0; index < items.length; index += 12) pageItems.push(items.slice(index, index + 12));
+  const pageTotals = pageItems.map((page) => page.reduce((sum, item) => sum + Number(item.line_total || 0), 0));
+  drawPage(commands, pageItems[0], pageItems.length === 1 ? invoice.total_amount : pageTotals[0], true);
+  for (let index = 1; index < pageItems.length; index += 1) {
+    const page = [];
+    drawPage(page, pageItems[index], index === pageItems.length - 1 ? invoice.total_amount : null);
+    extraPages.push(page);
   }
 
   const content = commands.join('\n');
@@ -275,8 +270,8 @@ function createInvoicePdf(invoice, items) {
     '<< /Type /Catalog /Pages 2 0 R >>',
     `<< /Type /Pages /Kids [${pageObjects.map((_, index) => `${pageObjectStart + index} 0 R`).join(' ')}] /Count ${pageObjects.length} >>`,
     ...pageObjects,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >>',
     ...pageContents.map((page) => `<< /Length ${Buffer.byteLength(page, 'ascii')} >>\nstream\n${page}\nendstream`),
   ];
   let pdf = '%PDF-1.4\n';
@@ -556,7 +551,6 @@ function createInvoice(body) {
     ? getStore(requiredPositiveInteger(Number(body.storeId), 'storeId'))
     : getOrCreateStore(body.storeName, body.address);
   if (!Array.isArray(body.items) || body.items.length === 0) fail('items must contain at least one line');
-  if (body.items.length > 12) fail('An invoice can contain at most 12 items', 400);
   const sequence = db.prepare("SELECT value FROM settings WHERE key = 'next_do_seq'").get();
   if (!sequence) fail('Invoice sequence setting is missing', 500);
   const nextSequence = Number(sequence.value);
