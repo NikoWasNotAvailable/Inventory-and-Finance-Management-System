@@ -231,6 +231,7 @@
 		font-family: Arial, sans-serif;
 		font-size: 10pt;
 		font-weight: 400;
+		letter-spacing: 0.7px;
 		color: #000;
 		-webkit-print-color-adjust: exact;
 		print-color-adjust: exact;
@@ -258,6 +259,7 @@
 		font-family: Arial, sans-serif;
 		font-size: 10pt;
 		font-weight: 400;
+		letter-spacing: 0.7px;
 		color: #000;
 	}
 
@@ -283,6 +285,7 @@
 		font-family: Arial, sans-serif;
 		font-size: 10pt;
 		font-weight: 400;
+		letter-spacing: 0.7px;
 		color: #000;
 		page-break-after: always;
 	}
@@ -478,7 +481,7 @@
 		position: static;
 		margin: 0;
 		gap: 10px;
-		font-size: 8pt;
+		font-size: 9pt;
 	}
 
 	.detail-bottom {
@@ -496,7 +499,7 @@
 	.detail-bottom::before {
 		content: "";
 		position: absolute;
-		top: -10px;
+		top: -6px;
 		left: 0;
 		right: 0;
 		border-top: 1px solid #000;
@@ -506,7 +509,7 @@
 		display: block;
 		width: 65%;
 		border: 1px solid #000;
-		font-size: 8pt;
+		font-size: 9pt;
 	}
 
 	.detail-po strong,
